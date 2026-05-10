@@ -20,7 +20,6 @@ struct ProductDetailScreen: View {
                     OfferSectionView(title: "Win-Back Offers", offers: product.winBackOffers.map(\.asDisplayOffer))
                 }
                 ProductFamilySharingView(familyShareable: product.familyShareable)
-                Spacer()
             }
             .padding()
         }
