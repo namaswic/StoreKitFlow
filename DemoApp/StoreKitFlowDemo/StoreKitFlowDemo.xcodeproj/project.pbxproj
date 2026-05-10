@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DA6883C52FB13E9E00E330C5 /* StoreKitFlow in Frameworks */ = {isa = PBXBuildFile; productRef = DA6883C42FB13E9E00E330C5 /* StoreKitFlow */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		DA8D594C2FB13C5800580C45 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,9 +33,30 @@
 		DA8D59552FB13C5800580C45 /* StoreKitFlowDemoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StoreKitFlowDemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DA6883CE2FB1417C00E330C5 /* Exceptions for "StoreKitFlowDemo" folder in "StoreKitFlowDemoTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Demo.storekit,
+			);
+			target = DA8D594A2FB13C5800580C45 /* StoreKitFlowDemoTests */;
+		};
+		DA6883CF2FB1417C00E330C5 /* Exceptions for "StoreKitFlowDemo" folder in "StoreKitFlowDemoUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Demo.storekit,
+			);
+			target = DA8D59542FB13C5800580C45 /* StoreKitFlowDemoUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DA8D593E2FB13C5700580C45 /* StoreKitFlowDemo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DA6883CE2FB1417C00E330C5 /* Exceptions for "StoreKitFlowDemo" folder in "StoreKitFlowDemoTests" target */,
+				DA6883CF2FB1417C00E330C5 /* Exceptions for "StoreKitFlowDemo" folder in "StoreKitFlowDemoUITests" target */,
+			);
 			path = StoreKitFlowDemo;
 			sourceTree = "<group>";
 		};
@@ -52,6 +77,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA6883C52FB13E9E00E330C5 /* StoreKitFlow in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,12 +98,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		DA6883C32FB13E9E00E330C5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		DA8D59332FB13C5600580C45 = {
 			isa = PBXGroup;
 			children = (
 				DA8D593E2FB13C5700580C45 /* StoreKitFlowDemo */,
 				DA8D594E2FB13C5800580C45 /* StoreKitFlowDemoTests */,
 				DA8D59582FB13C5800580C45 /* StoreKitFlowDemoUITests */,
+				DA6883C32FB13E9E00E330C5 /* Frameworks */,
 				DA8D593D2FB13C5700580C45 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -112,6 +146,7 @@
 			);
 			name = StoreKitFlowDemo;
 			packageProductDependencies = (
+				DA6883C42FB13E9E00E330C5 /* StoreKitFlow */,
 			);
 			productName = StoreKitFlowDemo;
 			productReference = DA8D593C2FB13C5700580C45 /* StoreKitFlowDemo.app */;
@@ -196,7 +231,7 @@
 			mainGroup = DA8D59332FB13C5600580C45;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				DA8D59682FB13C9000580C45 /* XCLocalSwiftPackageReference "../../../StoreKitFlow" */,
+				DA6883C22FB13E5D00E330C5 /* XCLocalSwiftPackageReference "../../../StoreKitFlow" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DA8D593D2FB13C5700580C45 /* Products */;
@@ -583,11 +618,19 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		DA8D59682FB13C9000580C45 /* XCLocalSwiftPackageReference "../../../StoreKitFlow" */ = {
+		DA6883C22FB13E5D00E330C5 /* XCLocalSwiftPackageReference "../../../StoreKitFlow" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../../StoreKitFlow;
 		};
 /* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DA6883C42FB13E9E00E330C5 /* StoreKitFlow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DA6883C22FB13E5D00E330C5 /* XCLocalSwiftPackageReference "../../../StoreKitFlow" */;
+			productName = StoreKitFlow;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DA8D59342FB13C5600580C45 /* Project object */;
 }

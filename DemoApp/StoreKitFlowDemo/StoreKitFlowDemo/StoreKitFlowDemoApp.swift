@@ -1,32 +1,37 @@
-//
-//  StoreKitFlowDemoApp.swift
-//  StoreKitFlowDemo
-//
-//  Created by Namaswi Chandarana on 5/10/26.
-//
-
 import SwiftUI
-import SwiftData
+import StoreKitFlow
 
 @main
 struct StoreKitFlowDemoApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    @StateObject private var store = StoreKitFlowStore(
+        productService: ProductService(),
+        entitlementService: EntitlementService(),
+        transactionService: TransactionService()
+    )
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(store)
+                .task {
+                    store.productIDs = [
+                        // Consumables
+                        "com.storekitflow.demo.coins10",
+                        // Non-Consumables
+                        "com.storekitflow.demo.removeads",
+                        "com.storekitflow.demo.themes",
+                        // Auto-Renewable — Pro group
+                        "com.storekitflow.demo.pro.monthly",
+                        "com.storekitflow.demo.pro.yearly",
+                        "com.storekitflow.demo.pro.monthly.upfront",
+                        // Auto-Renewable — Basic group
+                        "com.storekitflow.demo.basic.monthly",
+                        "com.storekitflow.demo.basic.yearly",
+                        // Non-Renewing
+                        "com.storekitflow.demo.pass.30days"
+                    ]
+                    await store.initialize()
+                }
         }
-        .modelContainer(sharedModelContainer)
     }
 }
