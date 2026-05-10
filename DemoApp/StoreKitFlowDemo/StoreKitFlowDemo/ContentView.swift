@@ -7,6 +7,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("Products", systemImage: "bag")
                 }
+            InfoScreen()
+                .tabItem {
+                    Label("Guide", systemImage: "book.fill")
+                }
         }
     }
 }
