@@ -1,5 +1,49 @@
 # Getting Started with StoreKitFlow
 
+## Installation
+
+### Swift Package Manager
+
+Add StoreKitFlow to your project in Xcode:
+
+1. Go to **File → Add Package Dependencies…**
+2. Enter the repository URL:
+   ```
+   https://github.com/namaswic/StoreKitFlow
+   ```
+3. Select **"Up to Next Major Version"** and click **Add Package**
+4. Add `StoreKitFlow` to your app target
+
+Or add it directly to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/namaswic/StoreKitFlow", from: "1.0.0")
+],
+targets: [
+    .target(
+        name: "YourTarget",
+        dependencies: ["StoreKitFlow"]
+    )
+]
+```
+
+Then import it wherever needed:
+
+```swift
+import StoreKitFlow
+```
+
+---
+
+## Requirements
+
+- iOS 17+ / macOS 14+
+- Swift 5.9+
+- Xcode 15+
+
+---
+
 ## Overview
 
 StoreKitFlow is a SwiftUI-first StoreKit 2 framework. Setup has two parts:
