@@ -44,6 +44,26 @@ import StoreKitFlow
 
 ---
 
+## Demo App
+
+The repository includes **StoreKitFlowDemo** — a fully working iOS app that serves as both a live integration example and an interactive API reference.
+
+It covers every StoreKit view and modifier with live configurable previews:
+
+- **Products** — browse loaded products by type with purchase support
+- **Logs** — structured real-time transaction and entitlement event log
+- **SK Views** — category-by-category explorer (Appearance, Controls, Styling, Structure, Composition, Data Binding)
+- **By View** — per-view reference for `ProductView`, `StoreView`, `SubscriptionStoreView`, and `SubscriptionOfferView` with interactive pickers and live sheets
+
+### Running the demo
+
+1. Clone the repository
+2. Open `DemoApp/StoreKitFlowDemo/StoreKitFlowDemo.xcodeproj` in Xcode
+3. Select the `StoreKitFlowDemo` scheme and an iPhone simulator
+4. Run — the app uses `Demo.storekit` for local product data, no App Store Connect setup needed
+
+---
+
 ## Overview
 
 StoreKitFlow is a SwiftUI-first StoreKit 2 framework. Setup has two parts:
