@@ -62,6 +62,29 @@ It covers every StoreKit view and modifier with live configurable previews:
 3. Select the `StoreKitFlowDemo` scheme and an iPhone simulator
 4. Run — the app uses `Demo.storekit` for local product data, no App Store Connect setup needed
 
+### Using the demo app with your own products
+
+You can point the demo app at your own product catalog without any code changes:
+
+1. Add your own `.storekit` file to the demo project (see Step 1–2 in the Overview below)
+2. In `StoreKitFlowDemoApp.swift`, update the `StoreKitFlowConfiguration` with your product IDs and subscription group IDs:
+
+```swift
+private static let configuration = StoreKitFlowConfiguration(
+    productIDs: [
+        "com.yourapp.product1",
+        "com.yourapp.product2",
+        "com.yourapp.subscription.monthly"
+    ],
+    subscriptionGroupIDs: ["YOUR_GROUP_ID"],
+    appStoreID: "YOUR_APP_STORE_ID"
+)
+```
+
+3. Run the app — all tabs and explorer screens will reflect your products automatically
+
+This makes the demo a useful debugging and preview tool during your own app's development.
+
 ---
 
 ## Overview
