@@ -1,8 +1,10 @@
 import SwiftUI
+import StoreKitFlow
 import StoreKit
 
 struct SKSubscriptionStoreViewScreen: View {
-    private let groupID = "763D6759"
+    @EnvironmentObject private var store: StoreKitFlowStore
+    private var groupID: String { store.configuration.subscriptionGroupIDs.first ?? "763D6759" }
 
     // Appearance
     @State private var controlStyle: SubscriptionControlStyleOption = .prominentPicker
@@ -338,7 +340,7 @@ struct SKSubscriptionStoreViewScreen: View {
             Toggle("Policies", isOn: $showPolicies)
             Toggle("Custom subscriptionStoreSignInAction", isOn: $useSignInAction)
             Button { showAccessorySheet = true } label: {
-                Label("Preview Accessory Buttons", systemImage: "ellipsis.circle.fill")
+                Label("Preview — tap to see changes", systemImage: "ellipsis.circle.fill")
             }
         } header: {
             Label("Accessory & Utility", systemImage: "ellipsis.circle.fill")

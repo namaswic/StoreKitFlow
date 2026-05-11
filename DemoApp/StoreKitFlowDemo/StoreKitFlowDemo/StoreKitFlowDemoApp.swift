@@ -3,35 +3,30 @@ import StoreKitFlow
 
 @main
 struct StoreKitFlowDemoApp: App {
-    @StateObject private var store = StoreKitFlowStore(
-        productService: ProductService(),
-        entitlementService: EntitlementService(),
-        transactionService: TransactionService()
+    private static let configuration = StoreKitFlowConfiguration(
+        productIDs: [
+            "com.storekitflow.demo.coins10",
+            "com.storekitflow.demo.removeads",
+            "com.storekitflow.demo.themes",
+            "com.storekitflow.demo.pro.monthly",
+            "com.storekitflow.demo.pro.yearly",
+            "com.storekitflow.demo.pro.monthly.upfront",
+            "com.storekitflow.demo.basic.monthly",
+            "com.storekitflow.demo.basic.yearly",
+            "com.storekitflow.demo.pass.30days"
+        ],
+        subscriptionGroupIDs: ["763D6759"],
+        appStoreID: "1632168877",
+        storeKitConfigFileName: "Demo"
     )
+
+    @StateObject private var store = StoreKitFlowStore(configuration: Self.configuration)
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
-                .task {
-                    store.productIDs = [
-                        // Consumables
-                        "com.storekitflow.demo.coins10",
-                        // Non-Consumables
-                        "com.storekitflow.demo.removeads",
-                        "com.storekitflow.demo.themes",
-                        // Auto-Renewable — Pro group
-                        "com.storekitflow.demo.pro.monthly",
-                        "com.storekitflow.demo.pro.yearly",
-                        "com.storekitflow.demo.pro.monthly.upfront",
-                        // Auto-Renewable — Basic group
-                        "com.storekitflow.demo.basic.monthly",
-                        "com.storekitflow.demo.basic.yearly",
-                        // Non-Renewing
-                        "com.storekitflow.demo.pass.30days"
-                    ]
-                    await store.initialize()
-                }
+                .task { await store.initialize() }
         }
     }
 }

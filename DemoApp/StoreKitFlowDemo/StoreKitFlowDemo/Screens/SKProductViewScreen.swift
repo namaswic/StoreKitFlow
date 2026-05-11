@@ -1,7 +1,9 @@
 import SwiftUI
+import StoreKitFlow
 import StoreKit
 
 struct SKProductViewScreen: View {
+    @EnvironmentObject private var store: StoreKitFlowStore
     @State private var productStyle: ProductViewStyleOption = .regular
     @State private var iconBorder = false
     @State private var showLargeSheet = false
@@ -47,7 +49,7 @@ struct SKProductViewScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showLargeSheet) { largeSheet }
         .appStoreOverlay(isPresented: $showOverlay) {
-            SKOverlay.AppConfiguration(appIdentifier: "1632168877", position: overlayPosition.skPosition)
+            SKOverlay.AppConfiguration(appIdentifier: store.configuration.appStoreID ?? "1632168877", position: overlayPosition.skPosition)
         }
         .refundRequestSheet(for: refundTransactionID ?? 0, isPresented: $showRefundSheet) { result in
             switch result {

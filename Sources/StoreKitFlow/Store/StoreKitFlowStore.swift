@@ -16,17 +16,21 @@ public final class StoreKitFlowStore: ObservableObject {
     private let transactionService: any TransactionObservable
 
     public var productIDs: [String] = []
+    public private(set) var configuration: StoreKitFlowConfiguration
 
     public init(
         productService: any ProductFetchable,
         purchaseService: any Purchasable = PurchaseService(),
         entitlementService: any EntitlementCheckable,
-        transactionService: any TransactionObservable
+        transactionService: any TransactionObservable,
+        configuration: StoreKitFlowConfiguration = .init(productIDs: [])
     ) {
         self.productService = productService
         self.purchaseService = purchaseService
         self.entitlementService = entitlementService
         self.transactionService = transactionService
+        self.configuration = configuration
+        self.productIDs = configuration.productIDs
     }
 
     public func initialize() async {

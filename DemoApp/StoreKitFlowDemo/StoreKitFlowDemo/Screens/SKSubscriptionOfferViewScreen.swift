@@ -1,12 +1,14 @@
 import SwiftUI
+import StoreKitFlow
 import StoreKit
 
 struct SKSubscriptionOfferViewScreen: View {
+    @EnvironmentObject private var store: StoreKitFlowStore
     @State private var offerStyle: SubscriptionOfferStyleOption = .automatic
     @State private var visibleRelationship: OfferRelationshipOption = .all
     @State private var showSheet = false
 
-    private let groupID = "763D6759"
+    private var groupID: String { store.configuration.subscriptionGroupIDs.first ?? "763D6759" }
 
     var body: some View {
         List {

@@ -1,7 +1,9 @@
 import SwiftUI
+import StoreKitFlow
 import StoreKit
 
 struct SKStoreViewScreen: View {
+    @EnvironmentObject private var store: StoreKitFlowStore
     @State private var storeStyle: ProductViewStyleOption = .regular
     @State private var showRestorePurchases = true
     @State private var showRedeemCode = false
@@ -23,7 +25,6 @@ struct SKStoreViewScreen: View {
             styleSection
             buttonsSection
             sheetsAndOverlaysSection
-            previewSection
         }
         .listSectionSpacing(12)
         .navigationTitle("StoreView")
@@ -31,7 +32,7 @@ struct SKStoreViewScreen: View {
         .sheet(isPresented: $showSheet) { storeSheet }
         .offerCodeRedemption(isPresented: $showOfferCodeSheet)
         .appStoreOverlay(isPresented: $showOverlay) {
-            SKOverlay.AppConfiguration(appIdentifier: "1632168877", position: overlayPosition.skPosition)
+            SKOverlay.AppConfiguration(appIdentifier: store.configuration.appStoreID ?? "1632168877", position: overlayPosition.skPosition)
         }
     }
 
@@ -62,6 +63,9 @@ struct SKStoreViewScreen: View {
             Toggle("Restore Purchases", isOn: $showRestorePurchases)
             Toggle("Redeem Code", isOn: $showRedeemCode)
             Toggle("Policies", isOn: $showPolicies)
+            Button { showSheet = true } label: {
+                Label("Preview StoreView", systemImage: "bag.fill")
+            }
         } header: {
             Label("storeButton", systemImage: "ellipsis.circle.fill")
         } footer: {
@@ -96,16 +100,6 @@ struct SKStoreViewScreen: View {
                 InfoItem.api("SKOverlay.AppConfiguration(appIdentifier:position:)", "configure the app to promote and overlay anchor position")
                 InfoItem.api(".bottom", "anchored to the bottom edge")
                 InfoItem.api(".bottomRaised", "raised above bottom — use when a tab bar is visible")
-            }
-        }
-    }
-
-    // MARK: - Preview
-
-    private var previewSection: some View {
-        Section {
-            Button { showSheet = true } label: {
-                Label("Open StoreView", systemImage: "bag.fill")
             }
         }
     }
