@@ -2,52 +2,67 @@ import SwiftUI
 import StoreKit
 
 struct SKViewsDemoScreen: View {
+    // All sheet state lives on the stable root view — never recreated by List
+    @State private var productStyle: ProductViewStyleOption = .regular
+    @State private var productIconBorder = false
+    @State private var showProductSheet = false
+
+    @State private var storeStyle: ProductViewStyleOption = .regular
+    @State private var showStoreSheet = false
+
+    @State private var subscriptionControlStyle: SubscriptionControlStyleOption = .prominentPicker
+    @State private var showSubscriptionHeader = true
+    @State private var showSubscriptionSheet = false
+
+    @State private var offerStyle: SubscriptionOfferStyleOption = .automatic
+    @State private var showOfferSheet = false
+
+    private let groupID = "763D6759"
+    private let storeIDs = [
+        "com.storekitflow.demo.coins10",
+        "com.storekitflow.demo.removeads",
+        "com.storekitflow.demo.themes",
+        "com.storekitflow.demo.pass.30days"
+    ]
+
     var body: some View {
         List {
-            ProductViewSection()
-            StoreViewSection()
-            SubscriptionStoreViewSection()
-            SubscriptionOfferViewSection()
+            productViewSection
+            storeViewSection
+            subscriptionStoreViewSection
+            subscriptionOfferViewSection
         }
         .listSectionSpacing(12)
         .navigationTitle("Views")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showProductSheet) { productSheet }
+        .sheet(isPresented: $showStoreSheet) { storeSheet }
+        .sheet(isPresented: $showSubscriptionSheet) { subscriptionSheet }
+        .sheet(isPresented: $showOfferSheet) { offerSheet }
     }
-}
 
-// MARK: - ProductView
-// .compact and .regular are inline row components — live in the list.
-// .large is a prominent card — presented in a sheet.
+    // MARK: - ProductView
 
-private struct ProductViewSection: View {
-    @State private var style: ProductViewStyleOption = .regular
-    @State private var showIconBorder = false
-    @State private var showLargeSheet = false
-
-    var body: some View {
+    private var productViewSection: some View {
         Section {
-            Picker("productViewStyle", selection: $style) {
+            Picker("productViewStyle", selection: $productStyle) {
                 ForEach(ProductViewStyleOption.allCases) { Text($0.label).tag($0) }
             }
-            Toggle("productIconBorder()", isOn: $showIconBorder)
+            Toggle("productIconBorder()", isOn: $productIconBorder)
 
-            switch style {
+            switch productStyle {
             case .regular:
                 ProductView(id: "com.storekitflow.demo.removeads") {
-                    iconView.applyBorderIfNeeded(showIconBorder)
+                    productIcon.applyBorderIfNeeded(productIconBorder)
                 }
                 .productViewStyle(.regular)
-
             case .compact:
                 ProductView(id: "com.storekitflow.demo.removeads") {
-                    iconView.applyBorderIfNeeded(showIconBorder)
+                    productIcon.applyBorderIfNeeded(productIconBorder)
                 }
                 .productViewStyle(.compact)
-
             case .large:
-                Button {
-                    showLargeSheet = true
-                } label: {
+                Button { showProductSheet = true } label: {
                     Label("Open .large ProductView", systemImage: "arrow.up.square")
                 }
             }
@@ -61,29 +76,9 @@ private struct ProductViewSection: View {
                 InfoItem.api(".productIconBorder()", "applies Apple's standard rounded border to custom icons")
             }
         }
-        .sheet(isPresented: $showLargeSheet) {
-            NavigationStack {
-                VStack {
-                    Spacer()
-                    ProductView(id: "com.storekitflow.demo.removeads") {
-                        iconView.applyBorderIfNeeded(showIconBorder)
-                    }
-                    .productViewStyle(.large)
-                    .padding(.horizontal)
-                    Spacer()
-                }
-                .navigationTitle("ProductView — .large")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { showLargeSheet = false }
-                    }
-                }
-            }
-        }
     }
 
-    private var iconView: some View {
+    private var productIcon: some View {
         Image(systemName: "nosign")
             .resizable()
             .scaledToFit()
@@ -91,30 +86,37 @@ private struct ProductViewSection: View {
             .padding(12)
             .background(.red.gradient, in: RoundedRectangle(cornerRadius: 14))
     }
-}
 
-// MARK: - StoreView
-// Always a sheet — StoreView manages its own dismiss button.
+    @ViewBuilder
+    private var productSheet: some View {
+        NavigationStack {
+            VStack {
+                Spacer()
+                ProductView(id: "com.storekitflow.demo.removeads") {
+                    productIcon.applyBorderIfNeeded(productIconBorder)
+                }
+                .productViewStyle(.large)
+                .padding(.horizontal)
+                Spacer()
+            }
+            .navigationTitle("ProductView — .large")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { showProductSheet = false }
+                }
+            }
+        }
+    }
 
-private struct StoreViewSection: View {
-    @State private var style: ProductViewStyleOption = .regular
-    @State private var showSheet = false
+    // MARK: - StoreView
 
-    private let ids = [
-        "com.storekitflow.demo.coins10",
-        "com.storekitflow.demo.removeads",
-        "com.storekitflow.demo.themes",
-        "com.storekitflow.demo.pass.30days"
-    ]
-
-    var body: some View {
+    private var storeViewSection: some View {
         Section {
-            Picker("productViewStyle", selection: $style) {
+            Picker("productViewStyle", selection: $storeStyle) {
                 ForEach(ProductViewStyleOption.allCases) { Text($0.label).tag($0) }
             }
-            Button {
-                showSheet = true
-            } label: {
+            Button { showStoreSheet = true } label: {
                 Label("Open StoreView", systemImage: "bag.fill")
             }
         } header: {
@@ -125,35 +127,26 @@ private struct StoreViewSection: View {
                 InfoItem.api(".productViewStyle(.large / .regular / .compact)", "controls row density and layout")
             }
         }
-        .sheet(isPresented: $showSheet) {
-            switch style {
-            case .large:   StoreView(ids: ids).productViewStyle(.large)
-            case .regular: StoreView(ids: ids).productViewStyle(.regular)
-            case .compact: StoreView(ids: ids).productViewStyle(.compact)
-            }
+    }
+
+    @ViewBuilder
+    private var storeSheet: some View {
+        switch storeStyle {
+        case .large:   StoreView(ids: storeIDs).productViewStyle(.large)
+        case .regular: StoreView(ids: storeIDs).productViewStyle(.regular)
+        case .compact: StoreView(ids: storeIDs).productViewStyle(.compact)
         }
     }
-}
 
-// MARK: - SubscriptionStoreView
-// The standard paywall pattern — always a sheet. Manages its own dismiss.
+    // MARK: - SubscriptionStoreView
 
-private struct SubscriptionStoreViewSection: View {
-    @State private var controlStyle: SubscriptionControlStyleOption = .prominentPicker
-    @State private var showCustomHeader = true
-    @State private var showSheet = false
-
-    private let groupID = "763D6759"
-
-    var body: some View {
+    private var subscriptionStoreViewSection: some View {
         Section {
-            Picker("subscriptionStoreControlStyle", selection: $controlStyle) {
+            Picker("subscriptionStoreControlStyle", selection: $subscriptionControlStyle) {
                 ForEach(SubscriptionControlStyleOption.allCases) { Text($0.label).tag($0) }
             }
-            Toggle("Custom marketing header", isOn: $showCustomHeader)
-            Button {
-                showSheet = true
-            } label: {
+            Toggle("Custom marketing header", isOn: $showSubscriptionHeader)
+            Button { showSubscriptionSheet = true } label: {
                 Label("Open SubscriptionStoreView", systemImage: "repeat.circle.fill")
             }
         } header: {
@@ -166,17 +159,12 @@ private struct SubscriptionStoreViewSection: View {
                 InfoItem.api(".subscriptionStorePolicyDestination(url:for:)", "links for privacy policy and terms of service")
             }
         }
-        .sheet(isPresented: $showSheet) {
-            subscriptionView
-        }
     }
 
     @ViewBuilder
-    private var subscriptionView: some View {
-        let header: () -> some View = {
-            AnyView(showCustomHeader ? AnyView(paywallHeader) : AnyView(EmptyView()))
-        }
-        switch controlStyle {
+    private var subscriptionSheet: some View {
+        let header = { AnyView(showSubscriptionHeader ? AnyView(paywallHeader) : AnyView(EmptyView())) }
+        switch subscriptionControlStyle {
         case .buttons:
             SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
                 .subscriptionStoreControlStyle(.buttons)
@@ -207,23 +195,15 @@ private struct SubscriptionStoreViewSection: View {
         }
         .padding(.top, 32)
     }
-}
 
-// MARK: - SubscriptionOfferView
-// A targeted offer card — always a sheet. iOS 18+.
+    // MARK: - SubscriptionOfferView
 
-private struct SubscriptionOfferViewSection: View {
-    @State private var offerStyle: SubscriptionOfferStyleOption = .automatic
-    @State private var showSheet = false
-
-    var body: some View {
+    private var subscriptionOfferViewSection: some View {
         Section {
             Picker("subscriptionOfferViewStyle", selection: $offerStyle) {
                 ForEach(SubscriptionOfferStyleOption.allCases) { Text($0.label).tag($0) }
             }
-            Button {
-                showSheet = true
-            } label: {
+            Button { showOfferSheet = true } label: {
                 Label("Open SubscriptionOfferView", systemImage: "tag.fill")
             }
         } header: {
@@ -236,22 +216,24 @@ private struct SubscriptionOfferViewSection: View {
                 InfoItem.availability("iOS 18+")
             }
         }
-        .sheet(isPresented: $showSheet) {
-            if #available(iOS 18.0, *) {
-                switch offerStyle {
-                case .automatic:
-                    SubscriptionOfferView(groupID: "763D6759", visibleRelationship: .all)
-                case .compact:
-                    SubscriptionOfferView(groupID: "763D6759", visibleRelationship: .all)
-                        .subscriptionOfferViewStyle(.compact)
-                }
-            } else {
-                ContentUnavailableView(
-                    "Requires iOS 18",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text("SubscriptionOfferView is available on iOS 18 and later.")
-                )
+    }
+
+    @ViewBuilder
+    private var offerSheet: some View {
+        if #available(iOS 18.0, *) {
+            switch offerStyle {
+            case .automatic:
+                SubscriptionOfferView(groupID: groupID, visibleRelationship: .all)
+            case .compact:
+                SubscriptionOfferView(groupID: groupID, visibleRelationship: .all)
+                    .subscriptionOfferViewStyle(.compact)
             }
+        } else {
+            ContentUnavailableView(
+                "Requires iOS 18",
+                systemImage: "exclamationmark.triangle",
+                description: Text("SubscriptionOfferView is available on iOS 18 and later.")
+            )
         }
     }
 }

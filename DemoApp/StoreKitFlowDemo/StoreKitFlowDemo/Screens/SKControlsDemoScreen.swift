@@ -2,10 +2,16 @@ import SwiftUI
 import StoreKit
 
 struct SKControlsDemoScreen: View {
+    // State lifted to stable root — prevents sheet dismiss bug in List
+    @State private var accentColor: AccentColorOption = .purple
+    @State private var showFamilyBadge = true
+    @State private var buttonLabelStyle: ButtonLabelOption = .multiline
+    @State private var showSheet = false
+
     var body: some View {
         List {
             if #available(iOS 18.0, *) {
-                CustomControlStyleSection()
+                customControlSection
             } else {
                 Section {
                     ContentUnavailableView(
@@ -19,17 +25,10 @@ struct SKControlsDemoScreen: View {
         }
         .navigationTitle("Controls")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showSheet) { customSheet }
     }
-}
 
-@available(iOS 18.0, *)
-private struct CustomControlStyleSection: View {
-    @State private var accentColor: AccentColorOption = .purple
-    @State private var showFamilyBadge = true
-    @State private var buttonLabelStyle: ButtonLabelOption = .multiline
-    @State private var showSheet = false
-
-    var body: some View {
+    private var customControlSection: some View {
         Section {
             Picker("Accent color", selection: $accentColor) {
                 ForEach(AccentColorOption.allCases) { Text($0.label).tag($0) }
@@ -38,9 +37,7 @@ private struct CustomControlStyleSection: View {
             Picker("SubscriptionStoreButton label", selection: $buttonLabelStyle) {
                 ForEach(ButtonLabelOption.allCases) { Text($0.label).tag($0) }
             }
-            Button {
-                showSheet = true
-            } label: {
+            Button { showSheet = true } label: {
                 Label("Open with Custom Control Style", systemImage: "slider.horizontal.3")
             }
         } header: {
@@ -54,7 +51,11 @@ private struct CustomControlStyleSection: View {
                 InfoItem.availability("iOS 18+")
             }
         }
-        .sheet(isPresented: $showSheet) {
+    }
+
+    @ViewBuilder
+    private var customSheet: some View {
+        if #available(iOS 18.0, *) {
             SubscriptionStoreView(groupID: "763D6759", visibleRelationships: .all) {
                 VStack(spacing: 8) {
                     Image(systemName: "wand.and.stars")
@@ -119,14 +120,10 @@ private struct CustomPickerControlStyle: SubscriptionStoreControlStyle {
                 )
             } confirmation: { option in
                 switch buttonLabelStyle {
-                case .action:
-                    SubscriptionStoreButton(option).subscriptionStoreButtonLabel(.action).tint(accentColor)
-                case .displayName:
-                    SubscriptionStoreButton(option).subscriptionStoreButtonLabel(.displayName).tint(accentColor)
-                case .price:
-                    SubscriptionStoreButton(option).subscriptionStoreButtonLabel(.price).tint(accentColor)
-                case .multiline:
-                    SubscriptionStoreButton(option).subscriptionStoreButtonLabel(.multiline).tint(accentColor)
+                case .action:       SubscriptionStoreButton(option).subscriptionStoreButtonLabel(.action).tint(accentColor)
+                case .displayName:  SubscriptionStoreButton(option).subscriptionStoreButtonLabel(.displayName).tint(accentColor)
+                case .price:        SubscriptionStoreButton(option).subscriptionStoreButtonLabel(.price).tint(accentColor)
+                case .multiline:    SubscriptionStoreButton(option).subscriptionStoreButtonLabel(.multiline).tint(accentColor)
                 }
             }
             .padding(.horizontal)

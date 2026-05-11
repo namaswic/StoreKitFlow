@@ -36,6 +36,22 @@ struct StoreKitViewsScreen: View {
                     color: .green,
                     destination: SKDataBindingDemoScreen()
                 )
+                categoryRow(
+                    title: "Structure",
+                    description: "Layout types that group subscription options by period or category — compose multi-section plan selectors.",
+                    types: ["SubscriptionOptionGroup", "SubscriptionOptionGroupSet", "SubscriptionPeriodGroupSet", "SubscriptionOptionSection"],
+                    icon: "rectangle.3.group.fill",
+                    color: .teal,
+                    destination: SKStructureDemoScreen()
+                )
+                categoryRow(
+                    title: "Composition",
+                    description: "Declarative building blocks for constructing fully custom store layouts with fine-grained product and section control.",
+                    types: ["StoreContent", "StoreContentBuilder"],
+                    icon: "square.stack.3d.up.fill",
+                    color: .indigo,
+                    destination: SKCompositionDemoScreen()
+                )
             }
             .navigationTitle("StoreKit Explorer")
         }

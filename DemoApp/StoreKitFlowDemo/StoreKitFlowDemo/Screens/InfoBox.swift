@@ -27,7 +27,6 @@ struct InfoBox: View {
 struct InfoItem {
     let view: AnyView
 
-    // API name stacked above its description
     static func api(_ name: String, _ description: String) -> InfoItem {
         InfoItem(view: AnyView(
             VStack(alignment: .leading, spacing: 4) {
@@ -40,7 +39,11 @@ struct InfoItem {
                 Text(description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         ))
     }
 
@@ -53,6 +56,8 @@ struct InfoItem {
                 Text(text)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(nil)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         ))
     }
@@ -66,6 +71,7 @@ struct InfoItem {
                 Text(text)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(nil)
             }
         ))
     }

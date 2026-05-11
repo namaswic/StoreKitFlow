@@ -15,6 +15,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("SK Views", systemImage: "rectangle.stack.fill")
                 }
+            SKByViewScreen()
+                .tabItem {
+                    Label("By View", systemImage: "square.stack.fill")
+                }
             InfoScreen()
                 .tabItem {
                     Label("Guide", systemImage: "book.fill")
