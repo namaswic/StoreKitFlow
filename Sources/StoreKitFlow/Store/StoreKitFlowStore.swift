@@ -8,6 +8,7 @@ public final class StoreKitFlowStore: ObservableObject {
     @Published public private(set) var isLoading = false
     @Published public private(set) var isPurchasing = false
     @Published public private(set) var purchaseError: Error? = nil
+    @Published public private(set) var logs: [StoreLog] = []
 
     private let productService: any ProductFetchable
     private let purchaseService: any Purchasable
@@ -31,14 +32,23 @@ public final class StoreKitFlowStore: ObservableObject {
     public func initialize() async {
         isLoading = true
         defer { isLoading = false }
+
+        log(.fetchStarted(ids: productIDs))
         async let fetchedProducts = productService.fetchProducts(ids: productIDs)
         async let entitlements = entitlementService.currentEntitlements()
+
         do {
             products = try await fetchedProducts
+            log(.fetchCompleted(count: products.count))
         } catch {
-            print("[StoreKitFlowStore] Fetch error: \(error)")
+            log(.fetchFailed(error: error.localizedDescription))
         }
-        purchasedProductIDs = await entitlements
+
+        let currentEntitlements = await entitlements
+        purchasedProductIDs = currentEntitlements
+        log(.entitlementsLoaded(productIDs: currentEntitlements))
+
+        await processUnfinishedTransactions()
         listenForTransactions()
     }
 
@@ -46,22 +56,32 @@ public final class StoreKitFlowStore: ObservableObject {
         isPurchasing = true
         purchaseError = nil
         defer { isPurchasing = false }
+
+        log(.purchaseStarted(productID: product.id))
+
         do {
             let result = try await purchaseService.purchase(product: product)
             switch result {
             case .success(let verification):
-                guard case .verified(let transaction) = verification else { return }
+                guard case .verified(let transaction) = verification else {
+                    log(.transactionUnverified(productID: product.id))
+                    return
+                }
+                log(.transactionVerified(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
                 purchasedProductIDs.insert(transaction.productID)
                 await transaction.finish()
+                log(.transactionFinished(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
+                log(.purchaseSucceeded(productID: product.id))
             case .userCancelled:
-                break
+                log(.purchaseCancelled(productID: product.id))
             case .pending:
-                break
+                log(.purchasePending(productID: product.id))
             @unknown default:
                 break
             }
         } catch {
             purchaseError = error
+            log(.purchaseFailed(productID: product.id, error: error.localizedDescription))
         }
     }
 
@@ -69,13 +89,74 @@ public final class StoreKitFlowStore: ObservableObject {
         purchasedProductIDs.contains(product.id)
     }
 
+    public func clearLogs() {
+        logs.removeAll()
+    }
+
+    private func processUnfinishedTransactions() async {
+        for await result in Transaction.unfinished {
+            switch result {
+                case .verified(
+                    let transaction
+                ):
+                    log(
+                        .unfinishedTransactionFound(
+                            productID: transaction.productID,
+                            transactionID: transaction.id,
+                            originalTransactionID: transaction.originalID
+                        )
+                    )
+                    purchasedProductIDs
+                        .insert(
+                            transaction.productID
+                        )
+                    await transaction
+                        .finish()
+                    log(
+                        .transactionFinished(
+                            productID: transaction.productID,
+                            transactionID: transaction.id,
+                            originalTransactionID: transaction.originalID
+                        )
+                    )
+                case .unverified(
+                    let transaction,
+                    _
+                ):
+                    log(
+                        .transactionUnverified(
+                            productID: transaction.productID
+                        )
+                    )
+            }
+        }
+    }
+
     private func listenForTransactions() {
         Task(priority: .background) {
             for await result in transactionService.updates() {
-                guard case .verified(let transaction) = result else { continue }
-                purchasedProductIDs.insert(transaction.productID)
-                await transaction.finish()
+                switch result {
+                case .verified(let transaction):
+                    await MainActor.run {
+                        self.log(.transactionReceived(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
+                        self.log(.transactionVerified(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
+                        self.purchasedProductIDs.insert(transaction.productID)
+                    }
+                    await transaction.finish()
+                    await MainActor.run {
+                        self.log(.transactionFinished(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
+                    }
+                case .unverified(let transaction, _):
+                    await MainActor.run {
+                        self.log(.transactionUnverified(productID: transaction.productID))
+                    }
+                }
             }
         }
+    }
+
+    private func log(_ event: StoreLogEvent) {
+        logs.insert(StoreLog(event: event), at: 0)
+        StoreKitFlowLogger.shared.log(event)
     }
 }
