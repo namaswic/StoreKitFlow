@@ -17,6 +17,7 @@ public enum StoreLogCategory: String, Sendable, CaseIterable {
     case purchaseFlow    = "Purchase Flow"
     case transactions    = "Transaction Listener"
     case entitlements    = "Entitlements"
+    case restore         = "Restore"
 }
 
 public enum StoreLogEvent: Sendable {
@@ -42,6 +43,11 @@ public enum StoreLogEvent: Sendable {
     // Entitlements
     case entitlementsLoaded(productIDs: Set<String>)
 
+    // Restore
+    case restoreStarted
+    case restoreCompleted(productIDs: Set<String>)
+    case restoreFailed(error: String)
+
     public var category: StoreLogCategory {
         switch self {
         case .fetchStarted, .fetchCompleted, .fetchFailed:
@@ -52,6 +58,8 @@ public enum StoreLogEvent: Sendable {
             return .transactions
         case .entitlementsLoaded:
             return .entitlements
+        case .restoreStarted, .restoreCompleted, .restoreFailed:
+            return .restore
         }
     }
 
@@ -72,7 +80,7 @@ public enum StoreLogEvent: Sendable {
         case .purchaseCancelled(let productID):
             return "\(prefix) Cancelled by user — \(productID)"
         case .purchasePending(let productID):
-            return "\(prefix) Pending approval — \(productID)"
+            return "\(prefix) Pending — \(productID)"
         case .purchaseFailed(let productID, let error):
             return "\(prefix) Failed — \(productID): \(error)"
         case .transactionReceived(let productID, let id, _):
@@ -87,6 +95,12 @@ public enum StoreLogEvent: Sendable {
             return "\(prefix) Unfinished #\(id) found — \(productID)"
         case .entitlementsLoaded(let productIDs):
             return "\(prefix) \(productIDs.isEmpty ? "No active entitlements" : productIDs.joined(separator: ", "))"
+        case .restoreStarted:
+            return "\(prefix) Restore started"
+        case .restoreCompleted(let productIDs):
+            return "\(prefix) Restored \(productIDs.count) entitlement(s)"
+        case .restoreFailed(let error):
+            return "\(prefix) Restore failed: \(error)"
         }
     }
 
@@ -106,6 +120,9 @@ public enum StoreLogEvent: Sendable {
         case .transactionFinished:          return "flag.checkered"
         case .unfinishedTransactionFound:   return "exclamationmark.circle"
         case .entitlementsLoaded:           return "person.badge.shield.checkmark"
+        case .restoreStarted:               return "arrow.clockwise"
+        case .restoreCompleted:             return "checkmark.circle.fill"
+        case .restoreFailed:                return "xmark.circle.fill"
         }
     }
 
@@ -115,7 +132,7 @@ public enum StoreLogEvent: Sendable {
 
     public var isError: Bool {
         switch self {
-        case .fetchFailed, .transactionUnverified, .purchaseFailed: return true
+        case .fetchFailed, .transactionUnverified, .purchaseFailed, .restoreFailed: return true
         default: return false
         }
     }
@@ -138,9 +155,15 @@ public enum StoreLogEvent: Sendable {
             return [Detail(label: "Error", value: error)]
         case .purchaseStarted(let productID),
              .purchaseSucceeded(let productID),
-             .purchaseCancelled(let productID),
-             .purchasePending(let productID):
+             .purchaseCancelled(let productID):
             return [Detail(label: "Product ID", value: productID)]
+        case .purchasePending(let productID):
+            return [
+                Detail(label: "Product ID", value: productID),
+                Detail(label: "Common causes", value: "Ask to Buy awaiting parental approval · Family Sharing organizer approval required · Billing issue (expired card, insufficient funds) · Bank authorization delay"),
+                Detail(label: "If still pending", value: "Ask the user to check Settings → Apple ID → Payment & Shipping, or contact Apple Support at https://support.apple.com/billing"),
+                Detail(label: "When Apple won't process", value: "Purchase never approved (Ask to Buy / Family Sharing) · Billing issue (expired card, insufficient funds) · Transaction flagged for fraud or App Store policy violation · Apple server-side delay")
+            ]
         case .purchaseFailed(let productID, let error):
             return [
                 Detail(label: "Product ID", value: productID),
@@ -165,6 +188,15 @@ public enum StoreLogEvent: Sendable {
                 Detail(label: "Count", value: "\(productIDs.count)"),
                 Detail(label: "Product IDs", value: productIDs.isEmpty ? "None" : productIDs.sorted().joined(separator: "\n"))
             ]
+        case .restoreStarted:
+            return []
+        case .restoreCompleted(let productIDs):
+            return [
+                Detail(label: "Restored Count", value: "\(productIDs.count)"),
+                Detail(label: "Product IDs", value: productIDs.isEmpty ? "None" : productIDs.sorted().joined(separator: "\n"))
+            ]
+        case .restoreFailed(let error):
+            return [Detail(label: "Error", value: error)]
         }
     }
 }

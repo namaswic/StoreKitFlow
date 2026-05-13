@@ -8,16 +8,19 @@ public final class MockPurchaseService: Purchasable {
         self.shouldFail = shouldFail
     }
 
-    public func purchase(product: StoreProduct) async throws -> Product.PurchaseResult {
+    public func purchase(
+        product: StoreProduct,
+        attributes: PurchaseAttributes = PurchaseAttributes()
+    ) async throws -> Product.PurchaseResult {
         if shouldFail { throw MockError.purchaseFailed }
         return .userCancelled
     }
 
-    public func purchasePublisher(product: StoreProduct) -> AnyPublisher<Product.PurchaseResult, Error> {
+    public func purchasePublisher(product: StoreProduct, attributes: PurchaseAttributes = PurchaseAttributes()) -> AnyPublisher<Product.PurchaseResult, Error> {
         Future { promise in
             Task {
                 do {
-                    let result = try await self.purchase(product: product)
+                    let result = try await self.purchase(product: product, attributes: attributes)
                     promise(.success(result))
                 } catch {
                     promise(.failure(error))
