@@ -71,10 +71,22 @@ public final class StoreKitFlowStore: ObservableObject {
                     log(.transactionUnverified(productID: product.id))
                     return
                 }
-                log(.transactionVerified(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
+                log(
+                    .transactionVerified(
+                        productID: transaction.productID,
+                        transactionID: transaction.id,
+                        originalTransactionID: transaction.originalID
+                    )
+                )
                 purchasedProductIDs.insert(transaction.productID)
                 await transaction.finish()
-                log(.transactionFinished(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
+                log(
+                    .transactionFinished(
+                        productID: transaction.productID,
+                        transactionID: transaction.id,
+                        originalTransactionID: transaction.originalID
+                    )
+                )
                 log(.purchaseSucceeded(productID: product.id))
             case .userCancelled:
                 log(.purchaseCancelled(productID: product.id))
@@ -100,9 +112,7 @@ public final class StoreKitFlowStore: ObservableObject {
     private func processUnfinishedTransactions() async {
         for await result in Transaction.unfinished {
             switch result {
-                case .verified(
-                    let transaction
-                ):
+                case .verified(let transaction):
                     log(
                         .unfinishedTransactionFound(
                             productID: transaction.productID,
@@ -110,12 +120,8 @@ public final class StoreKitFlowStore: ObservableObject {
                             originalTransactionID: transaction.originalID
                         )
                     )
-                    purchasedProductIDs
-                        .insert(
-                            transaction.productID
-                        )
-                    await transaction
-                        .finish()
+                    purchasedProductIDs.insert(transaction.productID)
+                    await transaction.finish()
                     log(
                         .transactionFinished(
                             productID: transaction.productID,
@@ -123,10 +129,7 @@ public final class StoreKitFlowStore: ObservableObject {
                             originalTransactionID: transaction.originalID
                         )
                     )
-                case .unverified(
-                    let transaction,
-                    _
-                ):
+                case .unverified(let transaction, _):
                     log(
                         .transactionUnverified(
                             productID: transaction.productID
@@ -142,13 +145,31 @@ public final class StoreKitFlowStore: ObservableObject {
                 switch result {
                 case .verified(let transaction):
                     await MainActor.run {
-                        self.log(.transactionReceived(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
-                        self.log(.transactionVerified(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
+                        self.log(
+                            .transactionReceived(
+                                productID: transaction.productID,
+                                transactionID: transaction.id,
+                                originalTransactionID: transaction.originalID
+                            )
+                        )
+                        self.log(
+                            .transactionVerified(
+                                productID: transaction.productID,
+                                transactionID: transaction.id,
+                                originalTransactionID: transaction.originalID
+                            )
+                        )
                         self.purchasedProductIDs.insert(transaction.productID)
                     }
                     await transaction.finish()
                     await MainActor.run {
-                        self.log(.transactionFinished(productID: transaction.productID, transactionID: transaction.id, originalTransactionID: transaction.originalID))
+                        self.log(
+                            .transactionFinished(
+                                productID: transaction.productID,
+                                transactionID: transaction.id,
+                                originalTransactionID: transaction.originalID
+                            )
+                        )
                     }
                 case .unverified(let transaction, _):
                     await MainActor.run {

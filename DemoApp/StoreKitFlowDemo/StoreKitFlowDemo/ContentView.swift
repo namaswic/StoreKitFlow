@@ -1,28 +1,8 @@
 import SwiftUI
+import StoreKitFlow
 
 struct ContentView: View {
     var body: some View {
-        TabView {
-            ProductsScreen()
-                .tabItem {
-                    Label("Products", systemImage: "bag")
-                }
-            LogsScreen()
-                .tabItem {
-                    Label("Logs", systemImage: "doc.text.fill")
-                }
-            StoreKitViewsScreen()
-                .tabItem {
-                    Label("SK Views", systemImage: "rectangle.stack.fill")
-                }
-            SKByViewScreen()
-                .tabItem {
-                    Label("By View", systemImage: "square.stack.fill")
-                }
-            InfoScreen()
-                .tabItem {
-                    Label("Guide", systemImage: "book.fill")
-                }
-        }
+        StoreKitFlowExplorerView()
     }
 }
