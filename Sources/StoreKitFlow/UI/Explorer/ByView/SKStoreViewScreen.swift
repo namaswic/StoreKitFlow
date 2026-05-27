@@ -71,9 +71,11 @@ struct SKStoreViewScreen: View {
         } footer: {
             InfoBox {
                 InfoItem.note("StoreView always presents as a sheet — it includes its own dismiss button.")
-                InfoItem.api(".productViewStyle(.regular)", "standard row per product — default layout")
-                InfoItem.api(".productViewStyle(.compact)", "dense single-line rows — fits more products on screen")
-                InfoItem.api(".productViewStyle(.large)", "hero cards — one prominent card per product")
+                InfoItem.group(".productViewStyle", variants: [
+                    (".regular", "standard row per product — default layout"),
+                    (".compact", "dense single-line rows — fits more products on screen"),
+                    (".large",   "hero cards — one prominent card per product")
+                ])
                 InfoItem.api(".productIconBorder()", "pass a custom icon view to StoreView — add .productIconBorder() on the icon to apply Apple's rounded border")
             }
         }
@@ -93,10 +95,12 @@ struct SKStoreViewScreen: View {
             Label("storeButton", systemImage: "ellipsis.circle.fill")
         } footer: {
             InfoBox {
-                InfoItem.api(".storeButton(.visible, for: .restorePurchases)", "shows a 'Restore Purchases' button below the product list")
-                InfoItem.api(".storeButton(.visible, for: .redeemCode)", "shows a 'Redeem Code' button for promo codes")
-                InfoItem.api(".storeButton(.visible, for: .policies)", "shows links to your privacy policy and terms of service")
-                InfoItem.api(".storeButton(.hidden, for:)", "explicitly hides a button — useful to override system defaults")
+                InfoItem.group(".storeButton", variants: [
+                    (".visible, for: .restorePurchases", "shows a 'Restore Purchases' button below the product list"),
+                    (".visible, for: .redeemCode",       "shows a 'Redeem Code' button for promo codes"),
+                    (".visible, for: .policies",         "shows links to your privacy policy and terms of service"),
+                    (".hidden, for:",                    "explicitly hides a button — useful to override system defaults")
+                ])
             }
         }
     }

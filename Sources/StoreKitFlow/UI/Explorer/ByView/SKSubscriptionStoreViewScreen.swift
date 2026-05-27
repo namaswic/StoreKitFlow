@@ -164,16 +164,22 @@ struct SKSubscriptionStoreViewScreen: View {
             Label("Appearance", systemImage: "paintbrush.fill")
         } footer: {
             InfoBox {
-                InfoItem.api(".subscriptionStoreControlStyle(.prominentPicker)", "large card-style picker — highlighted selection")
-                InfoItem.api(".subscriptionStoreControlStyle(.picker)", "standard compact picker")
-                InfoItem.api(".subscriptionStoreControlStyle(.compactPicker)", "segmented-style compact picker")
-                InfoItem.api(".subscriptionStoreControlStyle(.buttons)", "one button per plan — no picker")
-                InfoItem.api(".subscriptionStoreControlBackground(.automatic)", "adapts panel background to light/dark mode")
-                InfoItem.api(".subscriptionStoreControlBackground(.clear)", "removes panel background entirely")
-                InfoItem.api(".subscriptionStoreButtonLabel(.action)", "shows 'Subscribe' on the button")
-                InfoItem.api(".subscriptionStoreButtonLabel(.displayName)", "shows plan name (e.g. 'Monthly')")
-                InfoItem.api(".subscriptionStoreButtonLabel(.price)", "shows price (e.g. '$4.99')")
-                InfoItem.api(".subscriptionStoreButtonLabel(.multiline)", "stacks plan name and price")
+                InfoItem.group(".subscriptionStoreControlStyle", variants: [
+                    (".prominentPicker", "large card-style picker — highlighted selection"),
+                    (".picker",          "standard compact picker"),
+                    (".compactPicker",   "segmented-style compact picker"),
+                    (".buttons",         "one button per plan — no picker")
+                ])
+                InfoItem.group(".subscriptionStoreControlBackground", variants: [
+                    (".automatic", "adapts panel background to light/dark mode"),
+                    (".clear",     "removes panel background entirely")
+                ])
+                InfoItem.group(".subscriptionStoreButtonLabel", variants: [
+                    (".action",      "shows 'Subscribe' on the button"),
+                    (".displayName", "shows plan name (e.g. 'Monthly')"),
+                    (".price",       "shows price (e.g. '$4.99')"),
+                    (".multiline",   "stacks plan name and price")
+                ])
                 InfoItem.api("marketingContent:", "custom header view shown above the plan list")
             }
         }
@@ -255,9 +261,11 @@ struct SKSubscriptionStoreViewScreen: View {
             Label("containerBackground", systemImage: "rectangle.fill.on.rectangle.fill")
         } footer: {
             InfoBox {
-                InfoItem.api(".containerBackground(_:for: .subscriptionStore)", "fills the entire SubscriptionStoreView background")
-                InfoItem.api(".containerBackground(_:for: .subscriptionStoreHeader)", "fills only the marketing header area")
-                InfoItem.api(".containerBackground(_:for: .subscriptionStoreFullHeight)", "extends background to full screen height including safe area")
+                InfoItem.group(".containerBackground(_:for:)", variants: [
+                    (".subscriptionStore",           "fills the entire SubscriptionStoreView background"),
+                    (".subscriptionStoreHeader",     "fills only the marketing header area"),
+                    (".subscriptionStoreFullHeight", "extends background to full screen height including safe area")
+                ])
                 InfoItem.availability("iOS 18+")
             }
         }
@@ -383,10 +391,12 @@ struct SKSubscriptionStoreViewScreen: View {
             Label("Accessory & Utility", systemImage: "ellipsis.circle.fill")
         } footer: {
             InfoBox {
-                InfoItem.api(".storeButton(.visible, for: .restorePurchases)", "shows the 'Restore Purchases' button")
-                InfoItem.api(".storeButton(.visible, for: .signIn)", "shows a sign-in button for unauthenticated users")
-                InfoItem.api(".storeButton(.visible, for: .redeemCode)", "shows a 'Redeem Code' entry point")
-                InfoItem.api(".storeButton(.visible, for: .policies)", "shows privacy policy and terms of service links")
+                InfoItem.group(".storeButton(.visible, for:)", variants: [
+                    (".restorePurchases", "shows the 'Restore Purchases' button"),
+                    (".signIn",           "shows a sign-in button for unauthenticated users"),
+                    (".redeemCode",       "shows a 'Redeem Code' entry point"),
+                    (".policies",         "shows privacy policy and terms of service links")
+                ])
                 InfoItem.api(".subscriptionStoreSignInAction {}", "closure called when the sign-in button is tapped — present your own auth flow")
                 InfoItem.availability("iOS 18+")
             }

@@ -62,6 +62,42 @@ struct InfoItem {
         ))
     }
 
+    /// Groups a modifier name with its variants — one badge, bulleted list of values below.
+    static func group(_ name: String, variants: [(value: String, description: String)]) -> InfoItem {
+        InfoItem(view: AnyView(
+            VStack(alignment: .leading, spacing: 6) {
+                Text(name)
+                    .font(.system(.caption, design: .monospaced).weight(.medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Color.accentColor.opacity(0.85), in: RoundedRectangle(cornerRadius: 5))
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(variants.indices, id: \.self) { i in
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text("•")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(variants[i].value)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.primary)
+                            Text("—")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                            Text(variants[i].description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(nil)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                .padding(.leading, 4)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        ))
+    }
+
     static func availability(_ text: String) -> InfoItem {
         InfoItem(view: AnyView(
             HStack(alignment: .firstTextBaseline, spacing: 6) {

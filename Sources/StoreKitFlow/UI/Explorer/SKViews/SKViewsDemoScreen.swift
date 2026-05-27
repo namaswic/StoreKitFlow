@@ -97,9 +97,11 @@ struct SKViewsDemoScreen: View {
             Label("ProductView", systemImage: "cube.box.fill")
         } footer: {
             InfoBox {
-                InfoItem.api(".productViewStyle(.regular)", "standard row — shown inline in a list")
-                InfoItem.api(".productViewStyle(.compact)", "dense row — great for space-constrained layouts")
-                InfoItem.api(".productViewStyle(.large)", "prominent card — present in a sheet")
+                InfoItem.group(".productViewStyle", variants: [
+                    (".regular", "standard row — shown inline in a list"),
+                    (".compact", "dense row — great for space-constrained layouts"),
+                    (".large",   "prominent card — present in a sheet")
+                ])
                 InfoItem.api(".productIconBorder()", "applies Apple's standard rounded border to custom icons")
             }
         }

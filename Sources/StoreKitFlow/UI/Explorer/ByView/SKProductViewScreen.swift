@@ -134,9 +134,11 @@ struct SKProductViewScreen: View {
             Label("Style & Icon", systemImage: "paintbrush")
         } footer: {
             InfoBox {
-                InfoItem.api(".productViewStyle(.regular)", "standard row with title, description, and price button — ideal inline in a list")
-                InfoItem.api(".productViewStyle(.compact)", "dense single-line row — best for space-constrained layouts")
-                InfoItem.api(".productViewStyle(.large)", "prominent hero card — always present in a sheet")
+                InfoItem.group(".productViewStyle", variants: [
+                    (".regular", "standard row with title, description, and price button — ideal inline in a list"),
+                    (".compact", "dense single-line row — best for space-constrained layouts"),
+                    (".large",   "prominent hero card — always present in a sheet")
+                ])
                 InfoItem.api(".productIconBorder()", "applies Apple's standard rounded-rectangle border to your custom icon view")
             }
         }

@@ -120,9 +120,11 @@ struct SKStylingDemoScreen: View {
             Label("ProductViewStyle", systemImage: "cube.box")
         } footer: {
             InfoBox {
-                InfoItem.api(".productViewStyle(.large)", "hero card — best presented in a sheet")
-                InfoItem.api(".productViewStyle(.regular)", "standard row — shown inline in a list")
-                InfoItem.api(".productViewStyle(.compact)", "dense row — space-efficient layouts")
+                InfoItem.group(".productViewStyle", variants: [
+                    (".large",   "hero card — best presented in a sheet"),
+                    (".regular", "standard row — shown inline in a list"),
+                    (".compact", "dense row — space-efficient layouts")
+                ])
                 InfoItem.api(".productIconBorder()", "applies Apple's standard rounded border to custom icons")
             }
         }
@@ -170,13 +172,22 @@ struct SKStylingDemoScreen: View {
             Label("SubscriptionStoreView Styling", systemImage: "paintbrush.fill")
         } footer: {
             InfoBox {
-                InfoItem.api(".subscriptionStoreControlStyle()", ".buttons / .picker / .prominentPicker / .compactPicker")
-                InfoItem.api(".subscriptionStoreControlBackground(.automatic)", "adapts panel to light/dark mode")
-                InfoItem.api(".subscriptionStoreControlBackground(.clear)", "removes the panel background entirely")
-                InfoItem.api(".subscriptionStoreButtonLabel(.action)", "shows 'Subscribe'")
-                InfoItem.api(".subscriptionStoreButtonLabel(.displayName)", "shows the plan name")
-                InfoItem.api(".subscriptionStoreButtonLabel(.price)", "shows the price")
-                InfoItem.api(".subscriptionStoreButtonLabel(.multiline)", "stacks name + price")
+                InfoItem.group(".subscriptionStoreControlStyle", variants: [
+                    (".buttons",        "one button per plan — no picker"),
+                    (".picker",         "standard compact picker"),
+                    (".prominentPicker","large card-style picker — highlighted selection"),
+                    (".compactPicker",  "segmented-style compact picker")
+                ])
+                InfoItem.group(".subscriptionStoreControlBackground", variants: [
+                    (".automatic", "adapts panel to light/dark mode"),
+                    (".clear",     "removes the panel background entirely")
+                ])
+                InfoItem.group(".subscriptionStoreButtonLabel", variants: [
+                    (".action",      "shows 'Subscribe'"),
+                    (".displayName", "shows the plan name"),
+                    (".price",       "shows the price"),
+                    (".multiline",   "stacks name + price")
+                ])
             }
         }
     }
@@ -260,9 +271,11 @@ struct SKStylingDemoScreen: View {
             Label("containerBackground", systemImage: "rectangle.fill.on.rectangle.fill")
         } footer: {
             InfoBox {
-                InfoItem.api(".containerBackground(_:for: .subscriptionStore)", "fills the entire SubscriptionStoreView background")
-                InfoItem.api(".containerBackground(_:for: .subscriptionStoreHeader)", "fills only the marketing header area")
-                InfoItem.api(".containerBackground(_:for: .subscriptionStoreFullHeight)", "extends the background to fill the full screen height including safe area")
+                InfoItem.group(".containerBackground(_:for:)", variants: [
+                    (".subscriptionStore",           "fills the entire SubscriptionStoreView background"),
+                    (".subscriptionStoreHeader",     "fills only the marketing header area"),
+                    (".subscriptionStoreFullHeight", "extends the background to fill the full screen height including safe area")
+                ])
                 InfoItem.availability("iOS 18+")
             }
         }
