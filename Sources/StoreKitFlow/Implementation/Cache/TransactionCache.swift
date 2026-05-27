@@ -17,9 +17,9 @@ import StoreKit
 /// ## Thread safety
 /// All methods are `@MainActor` — safe to call from `StoreKitFlowStore` which is also `@MainActor`.
 @MainActor
-public final class TransactionCache {
+final class TransactionCache {
 
-    public static let shared = TransactionCache()
+    static let shared = TransactionCache()
 
     private let storageURL: URL
     private var entries: [CachedTransaction] = []
@@ -38,11 +38,11 @@ public final class TransactionCache {
     // MARK: - Public API
 
     /// All cached transactions, ordered oldest first.
-    public func all() -> [CachedTransaction] { entries }
+    func all() -> [CachedTransaction] { entries }
 
     /// Records a transaction. If a record with the same `id` already exists, it is replaced
     /// (e.g. to update `finishedAt` after `finish()` is called).
-    public func record(_ entry: CachedTransaction) {
+    func record(_ entry: CachedTransaction) {
         if let index = entries.firstIndex(where: { $0.id == entry.id }) {
             entries[index] = entry
         } else {
@@ -62,7 +62,7 @@ public final class TransactionCache {
     /// Returns the missing `Transaction` objects so the store can re-process and finish them.
     ///
     /// Call this from `initialize()` after draining unfinished transactions.
-    public func reconcile() async -> [Transaction] {
+    func reconcile() async -> [Transaction] {
         var missing: [Transaction] = []
 
         for await result in Transaction.currentEntitlements {
@@ -80,7 +80,7 @@ public final class TransactionCache {
 
     /// Removes all cached entries and deletes the backing file.
     /// Use only during development/testing — production data should not be cleared.
-    public func clearAll() {
+    func clearAll() {
         entries = []
         try? FileManager.default.removeItem(at: storageURL)
     }
