@@ -35,14 +35,25 @@ struct SKStylingDemoScreen: View {
             .background(.orange.gradient, in: RoundedRectangle(cornerRadius: 14))
     }
 
+    @State private var selectedSection: StylingSection? = nil
+
+    private enum StylingSection: String, CaseIterable, Identifiable {
+        case accessory           = "Accessory"
+        case containerBackground = "containerBackground"
+        case productViewStyle    = "ProductViewStyle"
+        case subscriptionStore   = "SubscriptionStoreView"
+        case uiCustomization     = "UI Customization"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         List {
-            productViewStyleSection
-            subscriptionStoreStylingSection
+            if selectedSection == nil || selectedSection == .productViewStyle { productViewStyleSection }
+            if selectedSection == nil || selectedSection == .subscriptionStore { subscriptionStoreStylingSection }
             if #available(iOS 18.0, *) {
-                uiCustomizationSection
-                containerBackgroundSection
-                accessorySection
+                if selectedSection == nil || selectedSection == .uiCustomization { uiCustomizationSection }
+                if selectedSection == nil || selectedSection == .containerBackground { containerBackgroundSection }
+                if selectedSection == nil || selectedSection == .accessory { accessorySection }
             } else {
                 Section {
                     ContentUnavailableView(
@@ -57,11 +68,28 @@ struct SKStylingDemoScreen: View {
         .listSectionSpacing(12)
         .navigationTitle("Styling")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) { sectionFilterBar }
         .sheet(isPresented: $showProductSheet) { productSheet }
         .sheet(isPresented: $showSubscriptionSheet) { subscriptionSheet }
         .sheet(isPresented: $showUICustomSheet) { uiCustomSheet }
         .sheet(isPresented: $showContainerSheet) { containerSheet }
         .sheet(isPresented: $showAccessorySheet) { accessorySheet }
+    }
+
+    private var sectionFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(title: "All", isSelected: selectedSection == nil) { selectedSection = nil }
+                ForEach(StylingSection.allCases) { section in
+                    FilterChip(title: section.rawValue, isSelected: selectedSection == section) {
+                        selectedSection = selectedSection == section ? nil : section
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .background(.bar)
     }
 
     // MARK: - ProductViewStyle

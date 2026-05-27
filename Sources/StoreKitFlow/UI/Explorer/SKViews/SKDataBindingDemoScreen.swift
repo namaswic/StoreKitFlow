@@ -2,14 +2,37 @@ import SwiftUI
 import StoreKit
 
 struct SKDataBindingDemoScreen: View {
+    @State private var selectedSection: DataBindingSection? = nil
+
+    private enum DataBindingSection: String, CaseIterable, Identifiable {
+        case storeProductTask       = "storeProductTask"
+        case subscriptionStatusTask = "subscriptionStatusTask"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         List {
-            StoreProductTaskSection()
-            SubscriptionStatusTaskSection()
+            if selectedSection == nil || selectedSection == .storeProductTask { StoreProductTaskSection() }
+            if selectedSection == nil || selectedSection == .subscriptionStatusTask { SubscriptionStatusTaskSection() }
         }
         .listSectionSpacing(12)
         .navigationTitle("Data Binding")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    FilterChip(title: "All", isSelected: selectedSection == nil) { selectedSection = nil }
+                    ForEach(DataBindingSection.allCases) { section in
+                        FilterChip(title: section.rawValue, isSelected: selectedSection == section) {
+                            selectedSection = selectedSection == section ? nil : section
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
+            .background(.bar)
+        }
     }
 }
 

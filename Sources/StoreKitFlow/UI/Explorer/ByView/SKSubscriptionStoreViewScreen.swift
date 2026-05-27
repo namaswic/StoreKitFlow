@@ -46,14 +46,29 @@ struct SKSubscriptionStoreViewScreen: View {
     @State private var structureShowHeader = true
     @State private var showStructureSheet = false
 
+    @State private var selectedSection: SSVSection? = nil
+
+    private enum SSVSection: String, CaseIterable, Identifiable {
+        case accessory           = "Accessory"
+        case appearance          = "Appearance"
+        case containerBackground = "containerBackground"
+        case customControls      = "Custom Controls"
+        case dataBinding         = "Data Binding"
+        case sheetsAndOverlays   = "Sheets & Overlays"
+        case storeEvents         = "Store Events"
+        case structure           = "Structure"
+        case uiCustomization     = "UI Customization"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         List {
-            appearanceSection
+            if selectedSection == nil || selectedSection == .appearance          { appearanceSection }
             if #available(iOS 18.0, *) {
-                containerBackgroundSection
-                uiCustomizationSection
-                customControlsSection
-                accessorySection
+                if selectedSection == nil || selectedSection == .containerBackground { containerBackgroundSection }
+                if selectedSection == nil || selectedSection == .uiCustomization     { uiCustomizationSection }
+                if selectedSection == nil || selectedSection == .customControls      { customControlsSection }
+                if selectedSection == nil || selectedSection == .accessory           { accessorySection }
             } else {
                 Section {
                     ContentUnavailableView(
@@ -64,16 +79,17 @@ struct SKSubscriptionStoreViewScreen: View {
                     .listRowBackground(Color.clear)
                 }
             }
-            storeEventsSection
-            sheetsAndOverlaysSection
-            dataBindingSection
+            if selectedSection == nil || selectedSection == .storeEvents         { storeEventsSection }
+            if selectedSection == nil || selectedSection == .sheetsAndOverlays   { sheetsAndOverlaysSection }
+            if selectedSection == nil || selectedSection == .dataBinding         { dataBindingSection }
             if #available(iOS 18.0, *) {
-                structureSection
+                if selectedSection == nil || selectedSection == .structure        { structureSection }
             }
         }
         .listSectionSpacing(12)
         .navigationTitle("SubscriptionStoreView")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) { sectionFilterBar }
         .sheet(isPresented: $showAppearanceSheet) { appearanceSheet }
         .sheet(isPresented: $showContainerSheet) { containerSheet }
         .sheet(isPresented: $showUICustomSheet) { uiCustomSheet }
@@ -109,6 +125,22 @@ struct SKSubscriptionStoreViewScreen: View {
                 subscriptionStatuses = statuses
             }
         }
+    }
+
+    private var sectionFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(title: "All", isSelected: selectedSection == nil) { selectedSection = nil }
+                ForEach(SSVSection.allCases) { section in
+                    FilterChip(title: section.rawValue, isSelected: selectedSection == section) {
+                        selectedSection = selectedSection == section ? nil : section
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .background(.bar)
     }
 
     // MARK: - Appearance

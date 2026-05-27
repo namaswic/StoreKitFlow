@@ -6,11 +6,19 @@ struct SKStructureDemoScreen: View {
     @State private var showPeriodGroupSheet = false
     @State private var showOptionGroupSheet = false
 
+    @State private var selectedSection: StructureSection? = nil
+
+    private enum StructureSection: String, CaseIterable, Identifiable {
+        case optionGroupStyle  = "SubscriptionOptionGroupStyle"
+        case periodGroupSet    = "SubscriptionPeriodGroupSet"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         List {
             if #available(iOS 18.0, *) {
-                periodGroupSetSection
-                optionGroupSection
+                if selectedSection == nil || selectedSection == .periodGroupSet { periodGroupSetSection }
+                if selectedSection == nil || selectedSection == .optionGroupStyle { optionGroupSection }
             } else {
                 Section {
                     ContentUnavailableView(
@@ -25,8 +33,25 @@ struct SKStructureDemoScreen: View {
         .listSectionSpacing(12)
         .navigationTitle("Structure")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) { sectionFilterBar }
         .sheet(isPresented: $showPeriodGroupSheet) { periodGroupSheet }
         .sheet(isPresented: $showOptionGroupSheet) { optionGroupSheet }
+    }
+
+    private var sectionFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(title: "All", isSelected: selectedSection == nil) { selectedSection = nil }
+                ForEach(StructureSection.allCases) { section in
+                    FilterChip(title: section.rawValue, isSelected: selectedSection == section) {
+                        selectedSection = selectedSection == section ? nil : section
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .background(.bar)
     }
 
     @available(iOS 18.0, *)

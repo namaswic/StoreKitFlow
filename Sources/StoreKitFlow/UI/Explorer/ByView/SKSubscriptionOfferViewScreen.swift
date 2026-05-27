@@ -9,15 +9,39 @@ struct SKSubscriptionOfferViewScreen: View {
 
     private var groupID: String { store.configuration.subscriptionGroupIDs.first ?? "763D6759" }
 
+    @State private var selectedSection: OfferViewSection? = nil
+
+    private enum OfferViewSection: String, CaseIterable, Identifiable {
+        case preview             = "Preview"
+        case style               = "subscriptionOfferViewStyle"
+        case visibleRelationship = "visibleRelationship"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         List {
-            styleSection
-            relationshipSection
-            previewSection
+            if selectedSection == nil || selectedSection == .style               { styleSection }
+            if selectedSection == nil || selectedSection == .visibleRelationship { relationshipSection }
+            if selectedSection == nil || selectedSection == .preview             { previewSection }
         }
         .listSectionSpacing(12)
         .navigationTitle("SubscriptionOfferView")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    FilterChip(title: "All", isSelected: selectedSection == nil) { selectedSection = nil }
+                    ForEach(OfferViewSection.allCases) { section in
+                        FilterChip(title: section.rawValue, isSelected: selectedSection == section) {
+                            selectedSection = selectedSection == section ? nil : section
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
+            .background(.bar)
+        }
         .sheet(isPresented: $showSheet) { offerSheet }
     }
 

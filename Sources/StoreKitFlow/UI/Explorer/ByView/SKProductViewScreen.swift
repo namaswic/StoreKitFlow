@@ -31,17 +31,29 @@ struct SKProductViewScreen: View {
             .background(.red.gradient, in: RoundedRectangle(cornerRadius: 14))
     }
 
+    @State private var selectedSection: ProductViewSection? = nil
+
+    private enum ProductViewSection: String, CaseIterable, Identifiable {
+        case dataBinding  = "Data Binding"
+        case overlay      = "appStoreOverlay"
+        case refund       = "refundRequestSheet"
+        case styleAndIcon = "Style & Icon"
+        case storeEvents  = "Store Events"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         List {
-            styleSection
-            storeEventsSection
-            refundSection
-            overlaySection
-            dataBindingSection
+            if selectedSection == nil || selectedSection == .styleAndIcon { styleSection }
+            if selectedSection == nil || selectedSection == .storeEvents  { storeEventsSection }
+            if selectedSection == nil || selectedSection == .refund       { refundSection }
+            if selectedSection == nil || selectedSection == .overlay      { overlaySection }
+            if selectedSection == nil || selectedSection == .dataBinding  { dataBindingSection }
         }
         .listSectionSpacing(12)
         .navigationTitle("ProductView")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) { sectionFilterBar }
         .sheet(isPresented: $showLargeSheet) { largeSheet }
         .appStoreOverlay(isPresented: $showOverlay) {
             SKOverlay.AppConfiguration(appIdentifier: store.configuration.appStoreID ?? "1632168877", position: overlayPosition.skPosition)
@@ -74,6 +86,22 @@ struct SKProductViewScreen: View {
             @unknown default:           break
             }
         }
+    }
+
+    private var sectionFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(title: "All", isSelected: selectedSection == nil) { selectedSection = nil }
+                ForEach(ProductViewSection.allCases) { section in
+                    FilterChip(title: section.rawValue, isSelected: selectedSection == section) {
+                        selectedSection = selectedSection == section ? nil : section
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .background(.bar)
     }
 
     // MARK: - Style + Icon

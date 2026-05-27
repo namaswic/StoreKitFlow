@@ -19,15 +19,39 @@ struct SKStoreViewScreen: View {
         "com.storekitflow.demo.pass.30days"
     ]
 
+    @State private var selectedSection: StoreViewSection? = nil
+
+    private enum StoreViewSection: String, CaseIterable, Identifiable {
+        case productViewStyle    = "productViewStyle"
+        case sheetsAndOverlays   = "Sheets & Overlays"
+        case storeButton         = "storeButton"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         List {
-            styleSection
-            buttonsSection
-            sheetsAndOverlaysSection
+            if selectedSection == nil || selectedSection == .productViewStyle  { styleSection }
+            if selectedSection == nil || selectedSection == .storeButton       { buttonsSection }
+            if selectedSection == nil || selectedSection == .sheetsAndOverlays { sheetsAndOverlaysSection }
         }
         .listSectionSpacing(12)
         .navigationTitle("StoreView")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    FilterChip(title: "All", isSelected: selectedSection == nil) { selectedSection = nil }
+                    ForEach(StoreViewSection.allCases) { section in
+                        FilterChip(title: section.rawValue, isSelected: selectedSection == section) {
+                            selectedSection = selectedSection == section ? nil : section
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
+            .background(.bar)
+        }
         .sheet(isPresented: $showSheet) { storeSheet }
         .offerCodeRedemption(isPresented: $showOfferCodeSheet)
         .appStoreOverlay(isPresented: $showOverlay) {

@@ -25,20 +25,47 @@ struct SKViewsDemoScreen: View {
         "com.storekitflow.demo.pass.30days"
     ]
 
+    @State private var selectedSection: ViewsSection? = nil
+
+    private enum ViewsSection: String, CaseIterable, Identifiable {
+        case productView        = "ProductView"
+        case storeView          = "StoreView"
+        case subscriptionStore  = "SubscriptionStoreView"
+        case subscriptionOffer  = "SubscriptionOfferView"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         List {
-            productViewSection
-            storeViewSection
-            subscriptionStoreViewSection
-            subscriptionOfferViewSection
+            if selectedSection == nil || selectedSection == .productView  { productViewSection }
+            if selectedSection == nil || selectedSection == .storeView    { storeViewSection }
+            if selectedSection == nil || selectedSection == .subscriptionStore { subscriptionStoreViewSection }
+            if selectedSection == nil || selectedSection == .subscriptionOffer { subscriptionOfferViewSection }
         }
         .listSectionSpacing(12)
         .navigationTitle("Views")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) { sectionFilterBar }
         .sheet(isPresented: $showProductSheet) { productSheet }
         .sheet(isPresented: $showStoreSheet) { storeSheet }
         .sheet(isPresented: $showSubscriptionSheet) { subscriptionSheet }
         .sheet(isPresented: $showOfferSheet) { offerSheet }
+    }
+
+    private var sectionFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(title: "All", isSelected: selectedSection == nil) { selectedSection = nil }
+                ForEach(ViewsSection.allCases) { section in
+                    FilterChip(title: section.rawValue, isSelected: selectedSection == section) {
+                        selectedSection = selectedSection == section ? nil : section
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .background(.bar)
     }
 
     // MARK: - ProductView
