@@ -79,6 +79,7 @@ struct SKStructureDemoScreen: View {
             Picker("Control style", selection: $groupStyle) {
                 ForEach(OptionGroupStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("SubscriptionOptionGroupStyle applied to the grouped plan layout")
             Button { showOptionGroupSheet = true } label: {
                 Label("Preview Control Style", systemImage: "rectangle.3.group.fill")
             }

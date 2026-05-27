@@ -75,7 +75,9 @@ struct SKViewsDemoScreen: View {
             Picker("productViewStyle", selection: $productStyle) {
                 ForEach(ProductViewStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Controls layout density — .regular, .compact inline or .large in a sheet")
             Toggle("productIconBorder()", isOn: $productIconBorder)
+                .hint("Applies Apple's standard rounded border to your custom icon view")
 
             switch productStyle {
             case .regular:
@@ -145,6 +147,7 @@ struct SKViewsDemoScreen: View {
             Picker("productViewStyle", selection: $storeStyle) {
                 ForEach(ProductViewStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Controls row density across all products in the StoreView")
             Button { showStoreSheet = true } label: {
                 Label("Open StoreView", systemImage: "bag.fill")
             }
@@ -174,7 +177,9 @@ struct SKViewsDemoScreen: View {
             Picker("subscriptionStoreControlStyle", selection: $subscriptionControlStyle) {
                 ForEach(SubscriptionControlStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Layout of the plan selector — buttons, picker, prominentPicker, or compactPicker")
             Toggle("Custom marketing header", isOn: $showSubscriptionHeader)
+                .hint("Adds a custom header view above the plan list via marketingContent:")
             Button { showSubscriptionSheet = true } label: {
                 Label("Open SubscriptionStoreView", systemImage: "repeat.circle.fill")
             }
@@ -244,6 +249,7 @@ struct SKViewsDemoScreen: View {
                 Picker("subscriptionOfferViewStyle", selection: $offerStyle) {
                     ForEach(SubscriptionOfferStyleOption.allCases) { Text($0.label).tag($0) }
                 }
+                .hint(".automatic adapts to the offer type, .compact uses a smaller card layout")
                 Button { showOfferSheet = true } label: {
                     Label("Open SubscriptionOfferView", systemImage: "tag.fill")
                 }

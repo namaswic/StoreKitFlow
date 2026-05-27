@@ -53,6 +53,7 @@ struct SKSubscriptionOfferViewScreen: View {
                 Picker("subscriptionOfferViewStyle", selection: $offerStyle) {
                     ForEach(SubscriptionOfferStyleOption.allCases) { Text($0.label).tag($0) }
                 }
+                .hint(".automatic adapts to the offer type, .compact uses a smaller card layout")
             } else {
                 ContentUnavailableView(
                     "Requires iOS 26",
@@ -81,6 +82,7 @@ struct SKSubscriptionOfferViewScreen: View {
                 Picker("visibleRelationship", selection: $visibleRelationship) {
                     ForEach(OfferRelationshipOption.allCases) { Text($0.label).tag($0) }
                 }
+                .hint(".all shows offers for all relationships, .current shows only the user's active subscription offers")
             }
         } header: {
             Label("visibleRelationship", systemImage: "person.2.fill")

@@ -32,10 +32,13 @@ struct SKControlsDemoScreen: View {
             Picker("Accent color", selection: $accentColor) {
                 ForEach(AccentColorOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Tint applied to selected rows and the SubscriptionStoreButton")
             Toggle("Show family sharing badge", isOn: $showFamilyBadge)
+                .hint("Displays a family badge on plans where isFamilyShareable is true")
             Picker("SubscriptionStoreButton label", selection: $buttonLabelStyle) {
                 ForEach(ButtonLabelOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Label style passed to SubscriptionStoreButton — action, displayName, price, or multiline")
             Button { showSheet = true } label: {
                 Label("Open with Custom Control Style", systemImage: "slider.horizontal.3")
             }

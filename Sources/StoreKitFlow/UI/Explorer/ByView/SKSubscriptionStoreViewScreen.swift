@@ -150,13 +150,17 @@ struct SKSubscriptionStoreViewScreen: View {
             Picker("subscriptionStoreControlStyle", selection: $controlStyle) {
                 ForEach(SubscriptionControlStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Layout of the plan selector — buttons, picker, prominentPicker, or compactPicker")
             Picker("subscriptionStoreControlBackground", selection: $controlBackground) {
                 ForEach(ControlBackgroundOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint(".automatic adapts to light/dark mode, .clear removes the panel background")
             Picker("subscriptionStoreButtonLabel", selection: $buttonLabel) {
                 ForEach(ButtonLabelOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Text shown on the subscribe button — action, displayName, price, or multiline")
             Toggle("Custom marketingContent: header", isOn: $showMarketingHeader)
+                .hint("Replaces the default header above the plan list with a custom view")
             Button { showAppearanceSheet = true } label: {
                 Label("Preview Appearance", systemImage: "paintbrush.fill")
             }
@@ -251,9 +255,11 @@ struct SKSubscriptionStoreViewScreen: View {
             Picker("Placement", selection: $containerPlacement) {
                 ForEach(ContainerPlacementOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Where the background is applied — store, header only, or full screen height")
             Picker("Color", selection: $containerColor) {
                 ForEach(ContainerColorOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Gradient color applied to the containerBackground")
             Button { showContainerSheet = true } label: {
                 Label("Preview Container Background", systemImage: "rectangle.fill.on.rectangle.fill")
             }
@@ -296,7 +302,9 @@ struct SKSubscriptionStoreViewScreen: View {
             Picker("subscriptionStorePickerItemBackground", selection: $pickerItemBg) {
                 ForEach(PickerItemBgOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Background material behind each picker row — regularMaterial, thinMaterial, or clear")
             Toggle("Custom subscriptionStoreControlIcon", isOn: $useCustomIcon)
+                .hint("Replaces the default icon in the control area with a custom view")
             Button { showUICustomSheet = true } label: {
                 Label("Preview UI Customization", systemImage: "slider.vertical.3")
             }
@@ -331,10 +339,13 @@ struct SKSubscriptionStoreViewScreen: View {
             Picker("Accent color", selection: $accentColor) {
                 ForEach(AccentColorOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Tint color applied to selected state and the subscribe button")
             Toggle("Show family sharing badge", isOn: $showFamilyBadge)
+                .hint("Displays a family sharing badge on plans with isFamilyShareable = true")
             Picker("Button label", selection: $customButtonLabel) {
                 ForEach(ButtonLabelOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Label style for SubscriptionStoreButton — action, displayName, price, or multiline")
             Button { showCustomControlSheet = true } label: {
                 Label("Preview Custom Controls", systemImage: "slider.horizontal.3")
             }
@@ -380,10 +391,15 @@ struct SKSubscriptionStoreViewScreen: View {
     private var accessorySection: some View {
         Section {
             Toggle("Restore Purchases", isOn: $showRestorePurchases)
+                .hint(".storeButton(.visible, for: .restorePurchases)")
             Toggle("Sign In", isOn: $showSignIn)
+                .hint(".storeButton(.visible, for: .signIn)")
             Toggle("Redeem Code", isOn: $showRedeemCode)
+                .hint(".storeButton(.visible, for: .redeemCode)")
             Toggle("Policies", isOn: $showPolicies)
+                .hint(".storeButton(.visible, for: .policies)")
             Toggle("Custom subscriptionStoreSignInAction", isOn: $useSignInAction)
+                .hint("Registers a closure to handle the sign-in tap — present your own auth flow")
             Button { showAccessorySheet = true } label: {
                 Label("Preview — tap to see changes", systemImage: "ellipsis.circle.fill")
             }
@@ -508,7 +524,9 @@ struct SKSubscriptionStoreViewScreen: View {
             Picker("subscriptionStoreControlStyle", selection: $structureControlStyle) {
                 ForEach(SubscriptionControlStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Layout style applied to the SubscriptionPeriodGroupSet structure")
             Toggle("Custom marketing header", isOn: $structureShowHeader)
+                .hint("Shows a custom header above the grouped plan structure")
             Button { showStructureSheet = true } label: {
                 Label("Preview Structure Layout", systemImage: "calendar.badge.clock")
             }

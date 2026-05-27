@@ -99,7 +99,9 @@ struct SKStylingDemoScreen: View {
             Picker("productViewStyle", selection: $productStyle) {
                 ForEach(ProductViewStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Controls layout density — .regular, .compact inline or .large in a sheet")
             Toggle("productIconBorder()", isOn: $productIconBorder)
+                .hint("Applies Apple's standard rounded border to your custom icon view")
             switch productStyle {
             case .regular:
                 ProductView(id: "com.storekitflow.demo.coins10") {
@@ -159,12 +161,15 @@ struct SKStylingDemoScreen: View {
             Picker("subscriptionStoreControlStyle", selection: $subscriptionControlStyle) {
                 ForEach(SubscriptionControlStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Layout of the plan selector — buttons, picker, prominentPicker, or compactPicker")
             Picker("subscriptionStoreControlBackground", selection: $controlBackground) {
                 ForEach(ControlBackgroundOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint(".automatic adapts to light/dark mode, .clear removes the panel background")
             Picker("subscriptionStoreButtonLabel", selection: $buttonLabel) {
                 ForEach(ButtonLabelOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Text shown on the subscribe button — action, displayName, price, or multiline")
             Button { showSubscriptionSheet = true } label: {
                 Label("Preview Styling", systemImage: "paintbrush.fill")
             }
@@ -226,7 +231,9 @@ struct SKStylingDemoScreen: View {
             Picker("subscriptionStorePickerItemBackground", selection: $pickerItemBackground) {
                 ForEach(PickerItemBgOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Background material behind each picker row — regularMaterial, thinMaterial, or clear")
             Toggle("Custom subscriptionStoreControlIcon", isOn: $useCustomControlIcon)
+                .hint("Replaces the default icon in the control area with a custom view")
             Button { showUICustomSheet = true } label: {
                 Label("Preview UI Customization", systemImage: "slider.vertical.3")
             }
@@ -261,9 +268,11 @@ struct SKStylingDemoScreen: View {
             Picker("containerBackground placement", selection: $containerPlacement) {
                 ForEach(ContainerPlacementOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Where the background is applied — store, header only, or full screen height")
             Picker("Color", selection: $containerColor) {
                 ForEach(ContainerColorOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Gradient color applied to the containerBackground")
             Button { showContainerSheet = true } label: {
                 Label("Preview Container Background", systemImage: "rectangle.fill.on.rectangle.fill")
             }
@@ -304,10 +313,15 @@ struct SKStylingDemoScreen: View {
     private var accessorySection: some View {
         Section {
             Toggle("Show Restore Purchases button", isOn: $showRestorePurchases)
+                .hint(".storeButton(.visible, for: .restorePurchases)")
             Toggle("Show Sign In button", isOn: $showSignIn)
+                .hint(".storeButton(.visible, for: .signIn)")
             Toggle("Show Redeem Code button", isOn: $showRedeemCode)
+                .hint(".storeButton(.visible, for: .redeemCode)")
             Toggle("Show Policies button", isOn: $showPolicies)
+                .hint(".storeButton(.visible, for: .policies)")
             Toggle("Custom subscriptionStoreSignInAction", isOn: $useCustomSignInAction)
+                .hint("Registers a closure to handle the sign-in tap — present your own auth flow")
             Button { showAccessorySheet = true } label: {
                 Label("Preview Accessory Buttons", systemImage: "ellipsis.circle.fill")
             }

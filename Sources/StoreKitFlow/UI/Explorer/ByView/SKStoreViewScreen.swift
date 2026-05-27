@@ -66,6 +66,7 @@ struct SKStoreViewScreen: View {
             Picker("productViewStyle", selection: $storeStyle) {
                 ForEach(ProductViewStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Controls row density across all products in the StoreView")
         } header: {
             Label("productViewStyle", systemImage: "paintbrush")
         } footer: {
@@ -86,8 +87,11 @@ struct SKStoreViewScreen: View {
     private var buttonsSection: some View {
         Section {
             Toggle("Restore Purchases", isOn: $showRestorePurchases)
+                .hint(".storeButton(.visible, for: .restorePurchases)")
             Toggle("Redeem Code", isOn: $showRedeemCode)
+                .hint(".storeButton(.visible, for: .redeemCode)")
             Toggle("Policies", isOn: $showPolicies)
+                .hint(".storeButton(.visible, for: .policies)")
             Button { showSheet = true } label: {
                 Label("Preview StoreView", systemImage: "bag.fill")
             }
@@ -115,6 +119,7 @@ struct SKStoreViewScreen: View {
             Picker("Overlay position", selection: $overlayPosition) {
                 ForEach(OverlayPositionOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint(".bottom anchors to the edge, .bottomRaised lifts above the tab bar")
             Button { showOverlay = true } label: {
                 Label("Show App Store Overlay", systemImage: "square.stack.fill")
             }

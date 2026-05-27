@@ -111,7 +111,9 @@ struct SKProductViewScreen: View {
             Picker("productViewStyle", selection: $productStyle) {
                 ForEach(ProductViewStyleOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint("Controls the layout density — .regular, .compact, or .large")
             Toggle("productIconBorder()", isOn: $iconBorder)
+            .hint("Applies Apple's standard rounded border to your custom icon view")
             Group {
                 switch productStyle {
                 case .regular:
@@ -262,6 +264,7 @@ struct SKProductViewScreen: View {
             Picker("Position", selection: $overlayPosition) {
                 ForEach(OverlayPositionOption.allCases) { Text($0.label).tag($0) }
             }
+            .hint(".bottom anchors to the bottom edge, .bottomRaised lifts above the tab bar")
             Button { showOverlay = true } label: {
                 Label("Show App Store Overlay", systemImage: "square.stack.fill")
             }
