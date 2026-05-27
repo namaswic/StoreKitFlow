@@ -28,7 +28,7 @@ struct LogsScreen: View {
             switch log.event {
             case .transactionReceived(let pid, let tid, let oid),
                  .transactionVerified(let pid, let tid, let oid),
-                 .transactionFinished(let pid, let tid, let oid),
+                 .transactionFinished(let pid, let tid, let oid, _),
                  .unfinishedTransactionFound(let pid, let tid, let oid):
                 productIDs.insert(pid)
                 transactionIDs.insert(tid)
@@ -60,7 +60,7 @@ struct LogsScreen: View {
                 switch (filter, log.event) {
                 case (.productID(let pid), .transactionReceived(let p, _, _)),
                      (.productID(let pid), .transactionVerified(let p, _, _)),
-                     (.productID(let pid), .transactionFinished(let p, _, _)),
+                     (.productID(let pid), .transactionFinished(let p, _, _, _)),
                      (.productID(let pid), .unfinishedTransactionFound(let p, _, _)):
                     return p == pid
                 case (.productID(let pid), .purchaseStarted(let p)),
@@ -74,12 +74,12 @@ struct LogsScreen: View {
                     return p == pid
                 case (.transactionID(let tid), .transactionReceived(_, let t, _)),
                      (.transactionID(let tid), .transactionVerified(_, let t, _)),
-                     (.transactionID(let tid), .transactionFinished(_, let t, _)),
+                     (.transactionID(let tid), .transactionFinished(_, let t, _, _)),
                      (.transactionID(let tid), .unfinishedTransactionFound(_, let t, _)):
                     return t == tid
                 case (.originalTransactionID(let oid), .transactionReceived(_, _, let o)),
                      (.originalTransactionID(let oid), .transactionVerified(_, _, let o)),
-                     (.originalTransactionID(let oid), .transactionFinished(_, _, let o)),
+                     (.originalTransactionID(let oid), .transactionFinished(_, _, let o, _)),
                      (.originalTransactionID(let oid), .unfinishedTransactionFound(_, _, let o)):
                     return o == oid
                 default:

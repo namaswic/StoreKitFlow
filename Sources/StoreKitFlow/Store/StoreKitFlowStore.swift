@@ -8,6 +8,9 @@ public final class StoreKitFlowStore: ObservableObject {
     @Published public private(set) var isLoading = false
     @Published public private(set) var isPurchasing = false
     @Published public private(set) var logs: [StoreLog] = []
+    /// Persistent history of every verified transaction seen by this store, ordered oldest first.
+    /// Populated from `TransactionCache` on `initialize()` and updated after every `finish()`.
+    @Published public private(set) var transactionHistory: [CachedTransaction] = []
 
     /// Called once per verified external transaction (renewal, revocation, family sharing).
     ///
@@ -28,6 +31,9 @@ public final class StoreKitFlowStore: ObservableObject {
     /// Must be stored — a discarded Task handle is eligible for cancellation, which would
     /// silently stop renewals from arriving after the first purchase.
     private var transactionListenerTask: Task<Void, Never>?
+
+    private let cache = TransactionCache.shared
+
 
     private let productService: any ProductFetchable
     private let purchaseService: any Purchasable
@@ -71,6 +77,11 @@ public final class StoreKitFlowStore: ObservableObject {
         purchasedProductIDs = currentEntitlements
         log(.entitlementsLoaded(productIDs: currentEntitlements))
 
+        if configuration.enableTransactionCache {
+            await processUnfinishedTransactions()
+            await runReconciliation()
+            transactionHistory = cache.all()
+        }
         listenForTransactionsUpdates()
     }
 
@@ -138,15 +149,7 @@ public final class StoreKitFlowStore: ObservableObject {
                     )
                 )
                 purchasedProductIDs.insert(transaction.productID)
-                // Must call finish() to remove the transaction from the queue
-                await transaction.finish()
-                log(
-                    .transactionFinished(
-                        productID: transaction.productID,
-                        transactionID: transaction.id,
-                        originalTransactionID: transaction.originalID
-                    )
-                )
+                await finishAndCache(transaction, source: .purchase)
                 log(.purchaseSucceeded(productID: product.id))
                 return .success(
                     productID: transaction.productID,
@@ -209,6 +212,12 @@ public final class StoreKitFlowStore: ObservableObject {
         logs.removeAll()
     }
 
+    public func clearTransactionHistory() {
+        guard configuration.enableTransactionCache else { return }
+        cache.clearAll()
+        transactionHistory = []
+    }
+
     /// Drains StoreKit's unfinished transaction queue by verifying and finishing each pending transaction.
     ///
     /// Unfinished transactions accumulate when a previous app session granted entitlement but crashed
@@ -237,14 +246,7 @@ public final class StoreKitFlowStore: ObservableObject {
                         )
                     )
                     purchasedProductIDs.insert(transaction.productID)
-                    await transaction.finish()
-                    log(
-                        .transactionFinished(
-                            productID: transaction.productID,
-                            transactionID: transaction.id,
-                            originalTransactionID: transaction.originalID
-                        )
-                    )
+                    await finishAndCache(transaction, source: .unfinished)
                 case .unverified(let transaction, _):
                     log(
                         .transactionUnverified(
@@ -300,14 +302,7 @@ public final class StoreKitFlowStore: ObservableObject {
                         purchasedProductIDs.insert(transaction.productID)
                     }
 
-                    await transaction.finish()
-                    log(
-                        .transactionFinished(
-                            productID: transaction.productID,
-                            transactionID: transaction.id,
-                            originalTransactionID: transaction.originalID
-                        )
-                    )
+                    await finishAndCache(transaction, source: .renewal)
 
                     if let handler = onTransactionUpdate {
                         let reason: TransactionUpdate.Reason
@@ -330,6 +325,47 @@ public final class StoreKitFlowStore: ObservableObject {
                     log(.transactionUnverified(productID: transaction.productID))
                 }
             }
+        }
+    }
+
+    /// Finishes a verified transaction, records it in the cache, and logs both events.
+    private func finishAndCache(_ transaction: Transaction, source: CacheSource) async {
+        let finishedAt = Date()
+        await transaction.finish()
+        log(
+            .transactionFinished(
+                productID: transaction.productID,
+                transactionID: transaction.id,
+                originalTransactionID: transaction.originalID,
+                reason: finishReason(for: transaction)
+            )
+        )
+        let productType = ProductType(transaction.productType)
+        let entry = CachedTransaction(
+            transaction: transaction,
+            productType: productType,
+            finishedAt: finishedAt,
+            source: source
+        )
+        if configuration.enableTransactionCache {
+            cache.record(entry)
+            transactionHistory = cache.all()
+            log(.transactionCached(productID: transaction.productID, transactionID: transaction.id, source: source))
+        }
+    }
+
+    /// Cross-references `Transaction.currentEntitlements` against the cache to surface
+    /// renewals that were delivered by StoreKit but never processed by this app.
+    private func runReconciliation() async {
+        let missing = await cache.reconcile()
+        if missing.isEmpty {
+            log(.reconciliationComplete)
+            return
+        }
+        log(.reconciliationFound(count: missing.count))
+        for transaction in missing {
+            purchasedProductIDs.insert(transaction.productID)
+            await finishAndCache(transaction, source: .renewal)
         }
     }
 

@@ -18,6 +18,7 @@ public enum StoreLogCategory: String, Sendable, CaseIterable {
     case transactions    = "Transaction Listener"
     case entitlements    = "Entitlements"
     case restore         = "Restore"
+    case cache           = "Transaction Cache"
 }
 
 public enum StoreLogEvent: Sendable {
@@ -37,7 +38,7 @@ public enum StoreLogEvent: Sendable {
     case transactionReceived(productID: String, transactionID: UInt64, originalTransactionID: UInt64)
     case transactionVerified(productID: String, transactionID: UInt64, originalTransactionID: UInt64)
     case transactionUnverified(productID: String)
-    case transactionFinished(productID: String, transactionID: UInt64, originalTransactionID: UInt64)
+    case transactionFinished(productID: String, transactionID: UInt64, originalTransactionID: UInt64, reason: String)
     case unfinishedTransactionFound(productID: String, transactionID: UInt64, originalTransactionID: UInt64)
 
     // Entitlements
@@ -47,6 +48,11 @@ public enum StoreLogEvent: Sendable {
     case restoreStarted
     case restoreCompleted(productIDs: Set<String>)
     case restoreFailed(error: String)
+
+    // Transaction Cache
+    case transactionCached(productID: String, transactionID: UInt64, source: CacheSource)
+    case reconciliationFound(count: Int)
+    case reconciliationComplete
 
     public var category: StoreLogCategory {
         switch self {
@@ -60,6 +66,8 @@ public enum StoreLogEvent: Sendable {
             return .entitlements
         case .restoreStarted, .restoreCompleted, .restoreFailed:
             return .restore
+        case .transactionCached, .reconciliationFound, .reconciliationComplete:
+            return .cache
         }
     }
 
@@ -89,7 +97,7 @@ public enum StoreLogEvent: Sendable {
             return "\(prefix) Verified #\(id) — \(productID)"
         case .transactionUnverified(let productID):
             return "\(prefix) Unverified — \(productID)"
-        case .transactionFinished(let productID, let id, _):
+        case .transactionFinished(let productID, let id, _, _):
             return "\(prefix) Finished #\(id) — \(productID)"
         case .unfinishedTransactionFound(let productID, let id, _):
             return "\(prefix) Unfinished #\(id) found — \(productID)"
@@ -101,6 +109,12 @@ public enum StoreLogEvent: Sendable {
             return "\(prefix) Restored \(productIDs.count) entitlement(s)"
         case .restoreFailed(let error):
             return "\(prefix) Restore failed: \(error)"
+        case .transactionCached(let productID, let id, let source):
+            return "\(prefix) Cached #\(id) (\(source.rawValue)) — \(productID)"
+        case .reconciliationFound(let count):
+            return "\(prefix) Reconciliation: \(count) missed renewal(s) found"
+        case .reconciliationComplete:
+            return "\(prefix) Reconciliation complete — no gaps found"
         }
     }
 
@@ -123,6 +137,9 @@ public enum StoreLogEvent: Sendable {
         case .restoreStarted:               return "arrow.clockwise"
         case .restoreCompleted:             return "checkmark.circle.fill"
         case .restoreFailed:                return "xmark.circle.fill"
+        case .transactionCached:            return "archivebox.fill"
+        case .reconciliationFound:          return "exclamationmark.magnifyingglass"
+        case .reconciliationComplete:       return "checkmark.magnifyingglass"
         }
     }
 
@@ -169,9 +186,15 @@ public enum StoreLogEvent: Sendable {
                 Detail(label: "Product ID", value: productID),
                 Detail(label: "Error", value: error)
             ]
+        case .transactionFinished(let productID, let id, let originalID, let reason):
+            return [
+                Detail(label: "Transaction ID", value: "#\(id)"),
+                Detail(label: "Original Txn ID", value: "#\(originalID)"),
+                Detail(label: "Product ID", value: productID),
+                Detail(label: "Reason", value: reason)
+            ]
         case .transactionReceived(let productID, let id, let originalID),
              .transactionVerified(let productID, let id, let originalID),
-             .transactionFinished(let productID, let id, let originalID),
              .unfinishedTransactionFound(let productID, let id, let originalID):
             return [
                 Detail(label: "Transaction ID", value: "#\(id)"),
@@ -181,7 +204,7 @@ public enum StoreLogEvent: Sendable {
         case .transactionUnverified(let productID):
             return [
                 Detail(label: "Product ID", value: productID),
-                Detail(label: "Reason", value: "Signature verification failed")
+                Detail(label: "Why not finished", value: skipFinishReason(for: .unverified))
             ]
         case .entitlementsLoaded(let productIDs):
             return [
@@ -197,6 +220,19 @@ public enum StoreLogEvent: Sendable {
             ]
         case .restoreFailed(let error):
             return [Detail(label: "Error", value: error)]
+        case .transactionCached(let productID, let id, let source):
+            return [
+                Detail(label: "Transaction ID", value: "#\(id)"),
+                Detail(label: "Product ID", value: productID),
+                Detail(label: "Source", value: source.rawValue)
+            ]
+        case .reconciliationFound(let count):
+            return [
+                Detail(label: "Missing Renewals", value: "\(count)"),
+                Detail(label: "Action", value: "These transactions were delivered by StoreKit but never recorded — likely missed due to app crash, background kill, or cancelled transaction listener task")
+            ]
+        case .reconciliationComplete:
+            return [Detail(label: "Status", value: "All StoreKit entitlements matched cache — no missed renewals detected")]
         }
     }
 }

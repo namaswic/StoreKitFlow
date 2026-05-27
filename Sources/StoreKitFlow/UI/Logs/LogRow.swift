@@ -79,6 +79,12 @@ struct LogRow: View {
         case .transactionFinished:          return "Transaction finished"
         case .unfinishedTransactionFound:   return "Unfinished transaction found"
         case .entitlementsLoaded:           return "Entitlements loaded"
+        case .restoreStarted:               return "Restore started"
+        case .restoreCompleted(let ids):    return "Restored \(ids.count) entitlement(s)"
+        case .restoreFailed:                return "Restore failed"
+        case .transactionCached(let productID, _, let source): return "Cached \(source.rawValue) — \(productID)"
+        case .reconciliationFound(let count): return "Reconciliation: \(count) missed renewal(s)"
+        case .reconciliationComplete:       return "Reconciliation complete"
         }
     }
 
@@ -89,6 +95,8 @@ struct LogRow: View {
         case .purchaseFlow:     return .green
         case .transactions:     return .purple
         case .entitlements:     return .orange
+        case .restore:          return .teal
+        case .cache:            return .cyan
         }
     }
 }

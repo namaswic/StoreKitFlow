@@ -11,6 +11,8 @@ public struct StoreKitFlowExplorerView: View {
                 .tabItem { Label("Products", systemImage: "bag") }
             LogsScreen()
                 .tabItem { Label("Logs", systemImage: "doc.text.fill") }
+            CacheScreen()
+                .tabItem { Label("Cache", systemImage: "archivebox.fill") }
             StoreKitViewsScreen()
                 .tabItem { Label("SK Views", systemImage: "rectangle.stack.fill") }
             SKByViewScreen()

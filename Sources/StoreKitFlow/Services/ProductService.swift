@@ -91,7 +91,7 @@ private extension PaymentMode {
     }
 }
 
-private extension ProductType {
+extension ProductType {
     init(_ type: Product.ProductType) {
         switch type {
         case .consumable:       self = .consumable
