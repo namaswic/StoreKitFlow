@@ -29,18 +29,21 @@ struct InfoItem {
 
     static func api(_ name: String, _ description: String) -> InfoItem {
         InfoItem(view: AnyView(
-            VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(name)
                     .font(.system(.caption, design: .monospaced).weight(.medium))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(Color.accentColor.opacity(0.85), in: RoundedRectangle(cornerRadius: 5))
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(description)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Color.secondary.opacity(0.4), in: RoundedRectangle(cornerRadius: 5))
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -72,22 +75,22 @@ struct InfoItem {
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(Color.accentColor.opacity(0.85), in: RoundedRectangle(cornerRadius: 5))
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(variants.indices, id: \.self) { i in
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text("•")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                             Text(variants[i].value)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.primary)
-                            Text("—")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .font(.system(.caption, design: .monospaced).weight(.medium))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
                             Text(variants[i].description)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(nil)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.25), in: RoundedRectangle(cornerRadius: 4))
+                                .fixedSize(horizontal: false, vertical: true)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
