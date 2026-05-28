@@ -1,5 +1,24 @@
 # Getting Started with StoreKitFlow
 
+## Table of Contents
+
+1. [Installation](#installation)
+2. [Why StoreKitFlow](#why-storekitflow)
+3. [Quick Setup](#quick-setup)
+4. [Purchasing](#purchasing)
+5. [Subscription Offers](#subscription-offers)
+6. [Handling External Transactions](#handling-external-transactions)
+7. [Native StoreKit Views](#native-storekitviews)
+8. [Transaction Cache](#transaction-cache)
+9. [Working with Products](#working-with-products)
+10. [Dependency Injection & Testing](#dependency-injection--testing)
+11. [Custom Logging](#custom-logging)
+12. [Combine Support](#combine-support)
+13. [Troubleshooting](#troubleshooting)
+14. [Protocol & Model Reference](#protocol--model-reference)
+
+---
+
 ## Installation
 
 ### Swift Package Manager
@@ -85,9 +104,9 @@ case .unverified:
     break
 case .failed(let error):
     switch error {
-    case .productNotFound:    showError("Product unavailable")
-    case .purchaseFailed(let e): showError(e.localizedDescription)
-    case .unknown(let e):     reportToAnalytics(e)
+    case .productNotFound:        showError("Product unavailable")
+    case .purchaseFailed(let e):  showError(e.localizedDescription)
+    case .unknown(let e):         reportToAnalytics(e)
     }
 }
 ```
@@ -110,11 +129,8 @@ PurchaseAttributes(
     customBoolValues: ["isPromotion": true]
 )
 
-// Apply a win-back offer (iOS 18+) — resolved to Product.SubscriptionOffer automatically
+// Apply a win-back offer (iOS 18+)
 PurchaseAttributes(winBackOfferID: "win_back_6month")
-
-// Verify introductory offer eligibility with a server-signed JWS token
-PurchaseAttributes(introductoryOfferJWS: jwsFromServer)
 
 // Simulate Ask to Buy in sandbox
 PurchaseAttributes(simulatesAskToBuy: true)
@@ -145,10 +161,9 @@ Every component is swappable. You can test purchase flows, cache behaviour, and 
 
 ```swift
 let store = StoreKitFlowStore(
-    productService: MockProductService(products: myTestProducts),
+    productService: MockProductService(products: MockData.products),
     entitlementService: MockEntitlementService(entitlements: ["com.myapp.pro"]),
     transactionService: MockTransactionService(),
-    cache: InMemoryCache(),
     configuration: StoreKitFlowConfiguration(productIDs: [...])
 )
 ```
@@ -165,7 +180,7 @@ This file is your local product catalog for the simulator. You only need it duri
 2. Name it (e.g. `Products.storekit`) and save it in your project folder
 3. Add your products — make sure the **Product ID** values match exactly what you register in App Store Connect
 
-> The `.storekit` file should **not** be added to your app target or bundled in your app.
+> The `.storekit` file should **not** be added to your app target or bundled in your app. Select it via Edit Scheme → Run → Options → StoreKit Configuration.
 
 ### Step 2 — Point your scheme at the file
 
@@ -215,6 +230,8 @@ struct MyApp: App {
 
 ## Purchasing
 
+### Basic purchase
+
 ```swift
 struct BuyButton: View {
     let product: StoreProduct
@@ -239,17 +256,19 @@ struct BuyButton: View {
 
 ### Checking entitlement
 
+`isPurchased(_:)` and `purchasedProductIDs` reflect what was loaded during `initialize()` and updated after each purchase or restore. They do not re-query Apple on every call — they are a reactive snapshot of the last known entitlement state. For auto-renewable subscriptions, always derive the authoritative access decision from `Product.SubscriptionInfo.Status`, not from this snapshot alone.
+
 ```swift
 // Reactive — updates automatically after any purchase or restore
 store.isPurchased(product)
 
-// Or observe the published set directly
+// Observe the full set directly
 store.purchasedProductIDs.contains("com.myapp.pro.monthly")
 ```
 
 ### Restoring purchases
 
-Required by App Store Review guidelines for apps with non-consumables or auto-renewable subscriptions. Only call in response to an explicit user action.
+Required by App Store Review guidelines for apps with non-consumables or auto-renewable subscriptions. Only call in response to an explicit user action — `AppStore.sync()` may present an Apple ID sign-in sheet.
 
 ```swift
 Button("Restore Purchases") {
@@ -257,19 +276,111 @@ Button("Restore Purchases") {
 }
 ```
 
+### Re-subscribing after expiry
+
+When a subscription lapses and a user tries to re-subscribe, StoreKit may silently return `.success` without showing a payment sheet if unfinished renewal transactions are still in the queue. Pass `shouldProcessUnfinishedTransactions: true` to drain the queue first:
+
+```swift
+// Use this on your re-subscribe button, not on first-time purchase
+await store.purchase(product, shouldProcessUnfinishedTransactions: true)
+```
+
+---
+
+## Subscription Offers
+
+StoreKit has three distinct offer types with different eligibility requirements, server-side flows, and `PurchaseAttributes` usage. They are not interchangeable.
+
+### Introductory offers
+
+**Who:** New subscribers who have never had an active or expired subscription in this group.
+
+**How:** Apple determines eligibility automatically. You can optionally verify server-side using a JWS token, or check eligibility via `StoreProduct.introductoryOffer` and `isEligibleForIntroOffer`:
+
+```swift
+// Check eligibility (queries Apple's servers)
+let eligible = await entitlementService.isEligibleForIntroOffer(productID: product.id)
+
+// Inspect the offer details from the product
+if let offer = product.introductoryOffer {
+    print(offer.displayPrice)    // "$0.00" for free trial
+    print(offer.period)          // "3 months"
+    print(offer.paymentMode)     // .free / .payAsYouGo / .payUpFront
+}
+
+// If you have a server-signed JWS for eligibility verification:
+await store.purchase(product, attributes: PurchaseAttributes(
+    introductoryOfferJWS: jwsFromServer
+))
+```
+
+### Promotional offers
+
+**Who:** Current or previously subscribed users — Apple does not automatically apply these. Your backend controls eligibility.
+
+**How:** Configure the offer in App Store Connect, sign it server-side, and pass the offer ID. The server signature is verified by Apple:
+
+```swift
+// Inspect available promotional offers on the product
+for offer in product.promotionalOffers {
+    print(offer.id)           // "promo_winback_3month"
+    print(offer.displayName)  // "3 Months for $1.99"
+    print(offer.paymentMode)  // .payAsYouGo / .payUpFront / .free
+    print(offer.displayPrice) // "$1.99"
+    print(offer.period)       // "3 months"
+}
+
+// Apply the offer — your server generates the signature
+await store.purchase(product, attributes: PurchaseAttributes(
+    promotionalOfferID: "promo_winback_3month"
+))
+```
+
+> Note: `promotionalOfferID` alone does not pass the server signature — StoreKit requires a signed payload for promotional offers. If your app needs full signature support, pass the signature components via `customStringValues` and handle them in a `Purchasable` implementation that calls the appropriate StoreKit API directly.
+
+### Win-back offers (iOS 18+ / macOS 15+)
+
+**Who:** Lapsed subscribers — users whose subscription expired. Apple manages eligibility.
+
+**How:** Configure in App Store Connect, then pass the offer ID. StoreKitFlow resolves it to the `Product.SubscriptionOffer` automatically:
+
+```swift
+// Inspect available win-back offers on the product
+for offer in product.winBackOffers {
+    print(offer.id)           // "win_back_6month"
+    print(offer.displayPrice) // "$2.99"
+    print(offer.period)       // "6 months"
+    print(offer.paymentMode)  // .payAsYouGo / .payUpFront / .free
+}
+
+// Apply the offer
+await store.purchase(product, attributes: PurchaseAttributes(
+    winBackOfferID: "win_back_6month"
+))
+```
+
+Win-back offers are only available on iOS 18+ / macOS 15+. StoreKitFlow guards the API with `#available` — passing a `winBackOfferID` on earlier OS versions is silently ignored.
+
+### Offer type comparison
+
+| | Introductory | Promotional | Win-back |
+|---|---|---|---|
+| Who qualifies | New subscribers | Current or lapsed — your logic | Lapsed — Apple's logic |
+| Server signature required | No (optional JWS) | Yes | No |
+| OS requirement | iOS 17+ | iOS 17+ | iOS 18+ |
+| `PurchaseAttributes` field | `introductoryOfferJWS` | `promotionalOfferID` | `winBackOfferID` |
+| Works in sandbox | Yes | Yes | Inconsistently |
+
 ---
 
 ## Handling External Transactions
 
-Renewals, revocations, and family sharing events arrive outside your direct purchase flow. Register a handler **before** calling `initialize()`:
+Renewals, revocations, and family sharing events arrive outside your direct purchase flow via `Transaction.updates`. Register a handler **before** calling `initialize()`:
 
 ```swift
 store.onTransactionUpdate = { update in
     switch update.reason {
     case .renewal:
-        // Re-check subscription status via Product.SubscriptionInfo.Status
-        // Do NOT grant access based on this callback alone — StoreKit can
-        // re-deliver the same transaction 2–3 times before finish() completes
         await refreshSubscriptionStatus()
     case .revocation:
         await revokeAccess(for: update.productID)
@@ -283,11 +394,37 @@ store.onTransactionUpdate = { update in
 await store.initialize()
 ```
 
+### Critical: do not grant access directly from this callback
+
+`onTransactionUpdate` can fire 2–3 times for the same renewal transaction before `finish()` completes. This is documented StoreKit behaviour — the same transaction ID is re-delivered until `finish()` is acknowledged by Apple's servers.
+
+StoreKitFlow deduplicates deliveries within a session and merges them in the cache delivery log, but the **callback still fires once per delivery**. Do not use it to directly flip an access flag:
+
+```swift
+// WRONG — fires multiple times for one renewal
+store.onTransactionUpdate = { update in
+    if case .renewal = update.reason {
+        grantAccess(for: update.productID)  // called 2–3x for one renewal
+    }
+}
+
+// CORRECT — re-read the authoritative subscription status
+store.onTransactionUpdate = { update in
+    if case .renewal = update.reason {
+        let statuses = try? await Product.SubscriptionInfo.status(for: groupID)
+        let isActive = statuses?.contains { $0.state == .subscribed } ?? false
+        updateAccess(isActive)
+    }
+}
+```
+
+The delivery trail in `store.transactionHistory` shows exactly how many times each transaction was delivered and via which path — useful when debugging duplicate-delivery reports.
+
 ---
 
 ## Native StoreKit Views
 
-If you use `ProductView`, `SubscriptionStoreView`, or other native StoreKit views, purchases complete outside `store.purchase()`. Call `reconcile()` after completion to record the transaction in the cache:
+If you use `ProductView`, `SubscriptionStoreView`, or other native StoreKit views, purchases complete outside `store.purchase()`. Call `reconcile()` after completion to record the transaction in the cache and update `purchasedProductIDs`:
 
 ```swift
 ProductView(id: "com.myapp.pro.monthly")
@@ -297,6 +434,8 @@ ProductView(id: "com.myapp.pro.monthly")
         }
     }
 ```
+
+`reconcile()` cross-references `Transaction.currentEntitlements` against the cache and finishes any transactions that were completed but not yet recorded. You can also call it any time you suspect the cache is out of sync — it is safe to call repeatedly.
 
 ---
 
@@ -316,7 +455,7 @@ store.transactionHistory
 let entry: CachedTransaction = store.transactionHistory.last!
 entry.productID          // "com.myapp.pro.monthly"
 entry.source             // .purchase / .renewal / .unfinished / .restore
-entry.environment        // "Sandbox" or "Production"
+entry.environment        // "Xcode", "Sandbox", or "Production"
 entry.finishedAt         // when finish() was called
 entry.deliveryCount      // how many times StoreKit surfaced this transaction
 entry.deliveryLog        // full trail with path + timestamp per delivery
@@ -331,39 +470,164 @@ entry.deliveryLog        // full trail with path + timestamp per delivery
 | `Transaction.unfinished` | Recovered from unfinished queue on launch |
 | `reconciliation` | Missed renewal caught by the reconciliation pass |
 
+**Environment values:**
+
+| Value | When |
+|---|---|
+| `"Xcode"` | Simulator with a `.storekit` configuration file |
+| `"Sandbox"` | Real device with a sandbox Apple ID, or TestFlight |
+| `"Production"` | App Store distribution |
+
 ```swift
 // Clear the local cache (does not affect App Store purchases)
 store.clearTransactionHistory()
+```
+
+The cache file lives at `Application Support/StoreKitFlow/transactions.json`. It is append-only — records are never deleted, only updated with new delivery events.
+
+---
+
+## Working with Products
+
+### StoreProduct
+
+`StoreProduct` is StoreKitFlow's type-safe wrapper around `Product`. It is fully `Sendable` and `Hashable` and safe to use across concurrency boundaries:
+
+```swift
+let product: StoreProduct = store.products.first!
+
+product.id              // "com.myapp.pro.monthly"
+product.displayName     // "Pro Monthly"
+product.description     // "Full access to all features"
+product.displayPrice    // "$4.99"
+product.price           // Decimal(4.99)
+product.type            // .autoRenewable
+product.familyShareable // true/false — whether Family Sharing is enabled
+```
+
+### Offer details on StoreProduct
+
+```swift
+// Introductory offer (nil if none configured or user not eligible)
+if let intro = product.introductoryOffer {
+    intro.paymentMode   // .free / .payAsYouGo / .payUpFront
+    intro.displayPrice  // "$0.00" for free trial
+    intro.period        // "7 days"
+}
+
+// Promotional offers (empty if none configured in App Store Connect)
+for offer in product.promotionalOffers {
+    offer.id            // "promo_3month"
+    offer.displayName   // "3 Months for $1.99"
+    offer.paymentMode   // .payAsYouGo
+    offer.displayPrice  // "$1.99"
+    offer.period        // "3 months"
+}
+
+// Win-back offers (iOS 18+, empty on earlier OS)
+for offer in product.winBackOffers {
+    offer.id            // "win_back_6month"
+    offer.paymentMode   // .free
+    offer.displayPrice  // "$0.00"
+    offer.period        // "6 months"
+}
+```
+
+### PaymentMode
+
+`PaymentMode` describes how an offer charges the user:
+
+| Case | Meaning |
+|---|---|
+| `.free` | Free trial — no charge during the offer period |
+| `.payAsYouGo` | Discounted recurring charge — billed each period at the offer price |
+| `.payUpFront` | Single upfront charge for the full offer period |
+
+### ProductType
+
+| Case | Description |
+|---|---|
+| `.consumable` | Used once, can be purchased multiple times (coins, credits, lives) |
+| `.nonConsumable` | Purchased once, owned forever (unlock, theme, remove ads) |
+| `.autoRenewable` | Recurring subscription — renews automatically until cancelled |
+| `.nonRenewing` | Time-limited access — does not auto-renew; you manage expiry |
+
+### EntitlementStatus
+
+`EntitlementStatus` describes the state of a subscription or purchase:
+
+```swift
+switch entitlementStatus {
+case .active:   // Currently entitled — grant access
+case .expired:  // Subscription lapsed — revoke access
+case .revoked:  // Apple issued a refund or revoked (family sharing) — revoke access
+}
 ```
 
 ---
 
 ## Dependency Injection & Testing
 
-### Mock services
+### Using MockData for instant test products
+
+`MockData.products` provides 9 ready-made `StoreProduct` instances covering all four product types — consumables, non-consumables, auto-renewable subscriptions (two groups, three price points), and a non-renewing pass. Use it in unit tests and previews without writing any fixture data:
 
 ```swift
 let store = StoreKitFlowStore(
-    productService: MockProductService(products: [
-        StoreProduct(
-            id: "com.test.pro",
-            displayName: "Pro",
-            description: "Full access",
-            displayPrice: "$4.99",
-            price: 4.99,
-            type: .autoRenewable
-        )
-    ]),
-    entitlementService: MockEntitlementService(
-        entitlements: [],
-        introEligible: true
-    ),
+    productService: MockProductService(products: MockData.products),
+    entitlementService: MockEntitlementService(entitlements: []),
     transactionService: MockTransactionService(),
-    configuration: StoreKitFlowConfiguration(productIDs: ["com.test.pro"])
+    configuration: StoreKitFlowConfiguration(productIDs: MockData.products.map(\.id))
 )
 ```
 
+Or filter to just the types you need:
+
+```swift
+let subscriptions = MockData.products.filter { $0.type == .autoRenewable }
+```
+
+### SwiftUI previews with a mock store
+
+`StoreObservable` is the protocol that `StoreKitFlowStore` conforms to. Views that accept `StoreKitFlowStore` as an `@EnvironmentObject` can be previewed with a fully mocked store — no StoreKit, no network:
+
+```swift
+#Preview {
+    ProductsView()
+        .environmentObject(
+            StoreKitFlowStore(
+                productService: MockProductService(products: MockData.products),
+                entitlementService: MockEntitlementService(
+                    entitlements: ["com.storekitflow.demo.pro.monthly"],
+                    introEligible: false
+                ),
+                transactionService: MockTransactionService(),
+                configuration: StoreKitFlowConfiguration(
+                    productIDs: MockData.products.map(\.id)
+                )
+            )
+        )
+}
+```
+
+### Simulating purchase failures
+
+`MockPurchaseService` accepts a `shouldFail` flag for testing error paths:
+
+```swift
+let store = StoreKitFlowStore(
+    productService: MockProductService(),
+    purchaseService: MockPurchaseService(shouldFail: true),
+    entitlementService: MockEntitlementService(),
+    transactionService: MockTransactionService(),
+    configuration: StoreKitFlowConfiguration(productIDs: [...])
+)
+// store.purchase(product) will return .failed(.purchaseFailed(...))
+```
+
 ### Custom in-memory cache
+
+For unit tests where you want to assert on cache state without touching disk:
 
 ```swift
 @MainActor
@@ -371,7 +635,6 @@ final class InMemoryCache: TransactionCaching {
     private var entries: [CachedTransaction] = []
     func all() -> [CachedTransaction] { entries }
     func record(_ entry: CachedTransaction) {
-        // Append delivery events to existing entry, or add new
         if let i = entries.firstIndex(where: { $0.id == entry.id }) {
             entries[i] = CachedTransaction(
                 id: entries[i].id, originalID: entries[i].originalID,
@@ -392,16 +655,53 @@ final class InMemoryCache: TransactionCaching {
 }
 ```
 
-### Silent logger
+---
+
+## Custom Logging
+
+Pass your own logger to receive every `StoreLogEvent` StoreKitFlow emits. Forward it to OSLog, Datadog, Crashlytics, or any analytics system:
+
+```swift
+final class MyLogger: StoreKitFlowLogging {
+    func log(_ event: StoreLogEvent) {
+        // event.description   — human-readable summary
+        // event.category      — .productService / .purchaseFlow / .transactions / etc.
+        // event.isError       — true for failures and unverified transactions
+        // event.details       — structured key-value pairs with full context
+        // event.icon          — SF Symbol name for the event type
+        if event.isError {
+            Analytics.trackError(event.description)
+        } else {
+            Analytics.track(event.description)
+        }
+    }
+}
+
+let store = StoreKitFlowStore(configuration: config, logger: MyLogger())
+```
+
+`isEnabled` has a default no-op implementation — you only need to implement `log(_:)`. The built-in `StoreKitFlowLogger.shared` is used when no logger is supplied; it prints to the console with timestamp and SF Symbol icon.
+
+To silence all logging in tests:
 
 ```swift
 final class SilentLogger: StoreKitFlowLogging {
-    var isEnabled = false
     func log(_ event: StoreLogEvent) {}
 }
 
 let store = StoreKitFlowStore(..., logger: SilentLogger())
 ```
+
+### Log categories
+
+| Category | Events |
+|---|---|
+| `productService` | Fetch started, completed, failed |
+| `purchaseFlow` | Purchase started, succeeded, cancelled, pending, failed |
+| `transactions` | Received, verified, unverified, finished, unfinished found |
+| `entitlements` | Current entitlements loaded |
+| `restore` | Restore started, completed, failed |
+| `cache` | Transaction cached, reconciliation found/complete |
 
 ---
 
@@ -416,6 +716,10 @@ productService.fetchProductsPublisher(ids: ids)
 
 entitlementService.currentEntitlementsPublisher()
     .sink { productIDs in ... }
+    .store(in: &cancellables)
+
+entitlementService.isEligibleForIntroOfferPublisher(productID: id)
+    .sink { eligible in ... }
     .store(in: &cancellables)
 ```
 
@@ -438,11 +742,22 @@ await store.purchase(product, shouldProcessUnfinishedTransactions: true)
 Make sure `enableTransactionCache: true` is set in your configuration. Without it, `transactionHistory` stays empty.
 
 **`onTransactionUpdate` fires multiple times for the same renewal**
-This is expected StoreKit behaviour — the same transaction can be re-delivered 2–3 times before `finish()` completes. StoreKitFlow deduplicates within the listener session. For subscription entitlement, always derive access from `Product.SubscriptionInfo.Status`, not the callback count.
+Expected StoreKit behaviour — the same transaction is re-delivered 2–3 times before `finish()` completes. Never grant access inside this callback directly. Re-read `Product.SubscriptionInfo.Status` to get the authoritative subscription state. See [Handling External Transactions](#handling-external-transactions).
+
+**Win-back offer not appearing in sandbox**
+Win-back offer presentation in sandbox is inconsistent as of iOS 18.0 — this is an Apple limitation. Test win-back flows in a production build or TestFlight.
+
+**`isEligibleForIntroOffer` returns `false` unexpectedly in sandbox**
+The sandbox account has a subscription history for this product. Reset it in Settings → App Store → Sandbox Account → Manage, or use a fresh sandbox account.
+
+**Introductory offer shown to ineligible users**
+`product.introductoryOffer` being non-nil only means the offer exists — it does not mean the current user qualifies. Always check `isEligibleForIntroOffer(productID:)` before surfacing introductory offer UI.
 
 ---
 
-## Protocol Reference
+## Protocol & Model Reference
+
+### Protocols
 
 | Protocol | Core requirement | Default extensions |
 |---|---|---|
@@ -452,5 +767,28 @@ This is expected StoreKit behaviour — the same transaction can be re-delivered
 | `IntroOfferCheckable` | `isEligibleForIntroOffer(productID:) async` | `isEligibleForIntroOfferPublisher(productID:)` |
 | `TransactionObservable` | `updates() -> AsyncStream` | `updatesPublisher()` |
 | `TransactionCaching` | `all()`, `record()`, `reconcile()`, `clearAll()` | — |
-| `StoreKitFlowLogging` | `log(_ event:)` | — |
+| `StoreKitFlowLogging` | `log(_ event:)` | `isEnabled` (default: `true`, no-op setter) |
 | `StoreObservable` | Full store surface | — |
+
+### Models
+
+| Type | Description |
+|---|---|
+| `StoreProduct` | Type-safe product wrapper — ID, name, price, type, offers |
+| `PurchaseAttributes` | All `Product.PurchaseOption` values in one struct |
+| `PurchaseOutcome` | Exhaustive typed result of a purchase call |
+| `StoreKitFlowError` | Typed errors: `.productNotFound`, `.purchaseFailed(Error)`, `.unknown(Error)` |
+| `CachedTransaction` | Persistent transaction record with delivery trail |
+| `TransactionDeliveryEvent` | Single delivery event: date, source, path |
+| `TransactionUpdate` | External event payload: productID, transactionID, reason |
+| `IntroductoryOffer` | Introductory offer details: paymentMode, displayPrice, period |
+| `PromotionalOffer` | Promotional offer details: id, displayName, paymentMode, displayPrice, period |
+| `WinBackOffer` | Win-back offer details: id, paymentMode, displayPrice, period |
+| `ProductType` | `.consumable` / `.nonConsumable` / `.autoRenewable` / `.nonRenewing` |
+| `PaymentMode` | `.free` / `.payAsYouGo` / `.payUpFront` |
+| `EntitlementStatus` | `.active` / `.expired` / `.revoked` |
+| `CacheSource` | `.purchase` / `.renewal` / `.restore` / `.unfinished` |
+| `TransactionDeliveryPath` | `.storePurchase` / `.transactionUpdates` / `.transactionUnfinished` / `.reconciliation` |
+| `StoreLog` | Log entry wrapper: id, timestamp, event |
+| `StoreLogEvent` | Enum of all loggable events with description, category, icon, isError, details |
+| `StoreLogCategory` | `.productService` / `.purchaseFlow` / `.transactions` / `.entitlements` / `.restore` / `.cache` |
