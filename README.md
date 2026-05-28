@@ -14,6 +14,7 @@ Not sure which `SubscriptionStoreView` control style fits your design? Wondering
 - Flip between all style variants with a segmented control — without dismissing the sheet
 - Toggle dark mode and Dynamic Type size to test accessibility on the spot
 - Tap any modifier line to copy it directly to your clipboard
+- **Understand every product type** — the built-in Guide covers consumables, non-consumables, auto-renewable subscriptions, and non-renewing passes with real examples of how each is configured, purchased, and handled in code
 
 **For designers:** See exactly what each configuration looks like in real iOS UI. Switch between styles, test dark mode, and preview large text — all without asking an engineer to change the code and rebuild.
 
@@ -135,6 +136,22 @@ struct MyApp: App {
 ```
 
 See [GETTING_STARTED.md](GETTING_STARTED.md) for full setup, StoreKit configuration file instructions, purchase options, testing, and protocol reference.
+
+---
+
+## Why StoreKitFlow
+
+**No third-party dependencies.** Pure Swift, StoreKit, and Combine. Nothing to audit, pin, or update when Apple ships a new SDK.
+
+**`@MainActor` throughout.** Every store method and cache operation runs on the main actor. No threading footguns, no `DispatchQueue.main.async` wrappers, no data races.
+
+**Works alongside native StoreKit views.** You don't have to go all-in. Use `ProductView` or `SubscriptionStoreView` as you normally would — call `store.reconcile()` after completion and StoreKitFlow records the transaction with no other integration required.
+
+**Delivery trail as a support tool.** When a user reports "I purchased but lost access", the delivery trail shows exactly what happened: which code path delivered each transaction, how many times StoreKit surfaced it, and when `finish()` was called. Answers in seconds without repro steps.
+
+**Structured, filterable logs.** `StoreLogEvent` carries a category, icon, severity flag, and searchable text — not just a console string. Pipe it to your own analytics, filter by error in the Explorer, or suppress it entirely by swapping in a silent logger.
+
+**Sandbox and production parity.** The transaction cache, delivery trail, and Explorer work identically in both environments. The `environment` field on every cached transaction (`"Sandbox"` or `"Production"`) makes it easy to filter during testing without changing any code.
 
 ---
 
