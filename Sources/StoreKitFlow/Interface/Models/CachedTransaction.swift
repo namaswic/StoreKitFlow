@@ -23,8 +23,13 @@ public struct CachedTransaction: Codable, Identifiable, Sendable {
     public let environment: String
     /// When `transaction.finish()` was called. `nil` if not yet finished (e.g. FinishPolicy held it back).
     public let finishedAt: Date?
-    /// How this transaction entered the cache.
+    /// How this transaction first entered the cache.
     public let source: CacheSource
+    /// Ordered trail of every time StoreKit surfaced this transaction to the app.
+    public var deliveryLog: [TransactionDeliveryEvent]
+
+    /// How many times StoreKit has delivered this transaction.
+    public var deliveryCount: Int { deliveryLog.count }
 
     public init(
         id: UInt64,
@@ -37,7 +42,8 @@ public struct CachedTransaction: Codable, Identifiable, Sendable {
         appAccountToken: UUID?,
         environment: String,
         finishedAt: Date?,
-        source: CacheSource
+        source: CacheSource,
+        deliveryLog: [TransactionDeliveryEvent] = []
     ) {
         self.id = id
         self.originalID = originalID
@@ -50,6 +56,7 @@ public struct CachedTransaction: Codable, Identifiable, Sendable {
         self.environment = environment
         self.finishedAt = finishedAt
         self.source = source
+        self.deliveryLog = deliveryLog
     }
 }
 
@@ -65,9 +72,39 @@ public enum CacheSource: String, Codable, Sendable, CaseIterable {
     case unfinished
 }
 
+/// The specific code path through which StoreKit surfaced a transaction.
+public enum TransactionDeliveryPath: String, Codable, Sendable, CaseIterable {
+    /// Direct `store.purchase()` call — user tapped Buy in your own UI.
+    case storePurchase       = "store.purchase()"
+    /// `Transaction.updates` async sequence — renewals, revocations, family sharing, Ask to Buy.
+    case transactionUpdates  = "Transaction.updates"
+    /// `Transaction.unfinished` drain at app launch — transactions finished before `finish()` was called.
+    case transactionUnfinished = "Transaction.unfinished"
+    /// `Transaction.currentEntitlements` reconciliation pass — catches deliveries missed between sessions.
+    case reconciliation      = "reconciliation"
+}
+
+/// A single delivery event recorded each time StoreKit surfaces a transaction to the app.
+public struct TransactionDeliveryEvent: Codable, Identifiable, Sendable {
+    public let id: UUID
+    /// When this delivery was observed.
+    public let date: Date
+    /// Which source path delivered it.
+    public let source: CacheSource
+    /// The specific code path that saw this delivery.
+    public let path: TransactionDeliveryPath
+
+    public init(date: Date = .now, source: CacheSource, path: TransactionDeliveryPath) {
+        self.id = UUID()
+        self.date = date
+        self.source = source
+        self.path = path
+    }
+}
+
 extension CachedTransaction {
-    /// Convenience init from a StoreKit `Transaction` and a source.
-    init(transaction: Transaction, productType: ProductType, finishedAt: Date?, source: CacheSource) {
+    /// Convenience init from a StoreKit `Transaction`, source, and the code path that saw it.
+    init(transaction: Transaction, productType: ProductType, finishedAt: Date?, source: CacheSource, path: TransactionDeliveryPath) {
         self.init(
             id: transaction.id,
             originalID: transaction.originalID,
@@ -79,7 +116,8 @@ extension CachedTransaction {
             appAccountToken: transaction.appAccountToken,
             environment: transaction.environment.rawValue,
             finishedAt: finishedAt,
-            source: source
+            source: source,
+            deliveryLog: [TransactionDeliveryEvent(source: source, path: path)]
         )
     }
 }

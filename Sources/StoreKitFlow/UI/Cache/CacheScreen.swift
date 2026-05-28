@@ -70,6 +70,15 @@ struct CacheRow: View {
                     Text(entry.purchaseDate, style: .relative)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Spacer()
+                    if entry.deliveryCount > 0 {
+                        Text("\(entry.deliveryCount)×")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.12), in: Capsule())
+                    }
                 }
             }
         }
@@ -119,8 +128,52 @@ struct CacheTransactionDetailView: View {
             Section("Metadata") {
                 LabeledContent("App Account Token", value: entry.appAccountToken.map { $0.uuidString } ?? "—")
             }
+            Section {
+                if entry.deliveryLog.isEmpty {
+                    Text("No delivery events recorded.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(entry.deliveryLog) { event in
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 6) {
+                                Text(event.path.rawValue)
+                                    .font(.system(.caption, design: .monospaced).weight(.medium))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(pathColor(event.path).opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
+                                Text(event.source.rawValue.capitalized)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(dateFormatter.string(from: event.date))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Delivery Trail")
+                    Spacer()
+                    Text("\(entry.deliveryCount) event\(entry.deliveryCount == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .navigationTitle("Transaction #\(entry.id)")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func pathColor(_ path: TransactionDeliveryPath) -> Color {
+        switch path {
+        case .storePurchase:        return .green
+        case .transactionUpdates:   return .blue
+        case .transactionUnfinished: return .orange
+        case .reconciliation:       return .purple
+        }
     }
 }

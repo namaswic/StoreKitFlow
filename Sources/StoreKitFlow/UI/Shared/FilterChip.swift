@@ -12,7 +12,7 @@ struct FilterChip: View {
                 .bold()
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(isSelected ? Color.blue : Color(.systemGray5), in: Capsule())
+                .background(isSelected ? Color.blue : Color.secondary.opacity(0.2), in: Capsule())
                 .foregroundStyle(isSelected ? .white : .primary)
         }
         .buttonStyle(.plain)

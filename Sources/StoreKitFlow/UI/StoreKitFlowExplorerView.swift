@@ -13,10 +13,8 @@ public struct StoreKitFlowExplorerView: View {
                 .tabItem { Label("Logs", systemImage: "doc.text.fill") }
             CacheScreen()
                 .tabItem { Label("Cache", systemImage: "archivebox.fill") }
-            StoreKitViewsScreen()
-                .tabItem { Label("SK Views", systemImage: "rectangle.stack.fill") }
             SKByViewScreen()
-                .tabItem { Label("By View", systemImage: "square.stack.fill") }
+                .tabItem { Label("Explorer", systemImage: "square.stack.fill") }
             InfoScreen()
                 .tabItem { Label("Guide", systemImage: "book.fill") }
         }

@@ -149,7 +149,7 @@ public final class StoreKitFlowStore: ObservableObject {
                     )
                 )
                 purchasedProductIDs.insert(transaction.productID)
-                await finishAndCache(transaction, source: .purchase)
+                await finishAndCache(transaction, source: .purchase, path: .storePurchase)
                 log(.purchaseSucceeded(productID: product.id))
                 return .success(
                     productID: transaction.productID,
@@ -246,7 +246,7 @@ public final class StoreKitFlowStore: ObservableObject {
                         )
                     )
                     purchasedProductIDs.insert(transaction.productID)
-                    await finishAndCache(transaction, source: .unfinished)
+                    await finishAndCache(transaction, source: .unfinished, path: .transactionUnfinished)
                 case .unverified(let transaction, _):
                     log(
                         .transactionUnverified(
@@ -302,7 +302,7 @@ public final class StoreKitFlowStore: ObservableObject {
                         purchasedProductIDs.insert(transaction.productID)
                     }
 
-                    await finishAndCache(transaction, source: .renewal)
+                    await finishAndCache(transaction, source: .renewal, path: .transactionUpdates)
 
                     if let handler = onTransactionUpdate {
                         let reason: TransactionUpdate.Reason
@@ -329,7 +329,7 @@ public final class StoreKitFlowStore: ObservableObject {
     }
 
     /// Finishes a verified transaction, records it in the cache, and logs both events.
-    private func finishAndCache(_ transaction: Transaction, source: CacheSource) async {
+    private func finishAndCache(_ transaction: Transaction, source: CacheSource, path: TransactionDeliveryPath) async {
         let finishedAt = Date()
         await transaction.finish()
         log(
@@ -345,7 +345,8 @@ public final class StoreKitFlowStore: ObservableObject {
             transaction: transaction,
             productType: productType,
             finishedAt: finishedAt,
-            source: source
+            source: source,
+            path: path
         )
         if configuration.enableTransactionCache {
             cache.record(entry)
@@ -356,6 +357,15 @@ public final class StoreKitFlowStore: ObservableObject {
 
     /// Cross-references `Transaction.currentEntitlements` against the cache to surface
     /// renewals that were delivered by StoreKit but never processed by this app.
+    /// Manually triggers a reconciliation pass. Call this after a purchase completes via
+    /// a StoreKit view (ProductView, SubscriptionStoreView) to ensure the transaction
+    /// is recorded in the cache even if it was finished before the updates listener saw it.
+    public func reconcile() async {
+        guard configuration.enableTransactionCache else { return }
+        await runReconciliation()
+        transactionHistory = cache.all()
+    }
+
     private func runReconciliation() async {
         let missing = await cache.reconcile()
         if missing.isEmpty {
@@ -365,7 +375,7 @@ public final class StoreKitFlowStore: ObservableObject {
         log(.reconciliationFound(count: missing.count))
         for transaction in missing {
             purchasedProductIDs.insert(transaction.productID)
-            await finishAndCache(transaction, source: .renewal)
+            await finishAndCache(transaction, source: .renewal, path: .reconciliation)
         }
     }
 

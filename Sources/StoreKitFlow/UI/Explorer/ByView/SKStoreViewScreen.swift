@@ -9,6 +9,7 @@ struct SKStoreViewScreen: View {
     @State private var showPolicies = true
     @State private var showSheet = false
     @State private var showOfferCodeSheet = false
+    @State private var showCompositionSheet = false
     @State private var overlayPosition: OverlayPositionOption = .bottom
     @State private var showOverlay = false
 
@@ -22,6 +23,7 @@ struct SKStoreViewScreen: View {
     @State private var selectedSection: StoreViewSection? = nil
 
     private enum StoreViewSection: String, CaseIterable, Identifiable {
+        case composition         = "Composition"
         case productViewStyle    = "productViewStyle"
         case sheetsAndOverlays   = "Sheets & Overlays"
         case storeButton         = "storeButton"
@@ -33,7 +35,10 @@ struct SKStoreViewScreen: View {
             if selectedSection == nil || selectedSection == .productViewStyle  { styleSection }
             if selectedSection == nil || selectedSection == .storeButton       { buttonsSection }
             if selectedSection == nil || selectedSection == .sheetsAndOverlays { sheetsAndOverlaysSection }
+            if selectedSection == nil || selectedSection == .composition       { compositionSection }
         }
+        .sheet(isPresented: $showSheet) { storeSheet }
+        .sheet(isPresented: $showCompositionSheet) { compositionSheet }
         .listSectionSpacing(12)
         .navigationTitle("StoreView")
         .navigationBarTitleDisplayMode(.inline)
@@ -52,11 +57,12 @@ struct SKStoreViewScreen: View {
             }
             .background(.bar)
         }
-        .sheet(isPresented: $showSheet) { storeSheet }
         .offerCodeRedemption(isPresented: $showOfferCodeSheet)
+        #if os(iOS)
         .appStoreOverlay(isPresented: $showOverlay) {
             SKOverlay.AppConfiguration(appIdentifier: store.configuration.appStoreID ?? "1632168877", position: overlayPosition.skPosition)
         }
+        #endif
     }
 
     // MARK: - Style
@@ -136,19 +142,98 @@ struct SKStoreViewScreen: View {
         }
     }
 
-    // MARK: - Sheet
+    // MARK: - Composition (iOS 18+)
+
+    private var compositionSection: some View {
+        Section {
+            if #available(iOS 18.0, *) {
+                Button { showCompositionSheet = true } label: {
+                    Label("Preview StoreContent Layout", systemImage: "square.stack.3d.up.fill")
+                }
+            } else {
+                ContentUnavailableView(
+                    "Requires iOS 18",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("StoreContent and @StoreContentBuilder require iOS 18 or later.")
+                )
+                .listRowBackground(Color.clear)
+            }
+        } header: {
+            Label("Composition", systemImage: "square.stack.3d.up.fill")
+        } footer: {
+            InfoBox {
+                InfoItem.api("StoreContent", "declarative descriptor for custom store layouts — defines what products and sections appear in a StoreView")
+                InfoItem.api("@StoreContentBuilder", "result builder that composes multiple StoreContent values using declarative block syntax")
+                InfoItem.note("Use @StoreContentBuilder to build a custom product listing by declaring which product IDs to show and how to group them.")
+                InfoItem.availability("iOS 18+")
+            }
+        }
+    }
 
     @ViewBuilder
-    private var storeSheet: some View {
+    private var compositionSheet: some View {
+        if #available(iOS 18.0, *) {
+            StoreView(ids: storeIDs) { _ in
+                Image(systemName: "bag.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(.white)
+                    .padding(10)
+                    .background(.indigo.gradient, in: RoundedRectangle(cornerRadius: 14))
+            }
+        }
+    }
+
+    // MARK: - Sheet
+
+    private var storeSheetModifiers: [String] {
+        var lines = ["StoreView(ids: productIDs)"]
+        lines.append("  .productViewStyle(.\(storeStyle.rawValue))")
+        if showRestorePurchases { lines.append("  .storeButton(.visible, for: .restorePurchases)") }
+        if showRedeemCode       { lines.append("  .storeButton(.visible, for: .redeemCode)") }
+        if showPolicies         { lines.append("  .storeButton(.visible, for: .policies)") }
+        return lines
+    }
+
+    @ViewBuilder
+    private func storeViewWithStyle(_ style: ProductViewStyleOption) -> some View {
         Group {
-            switch storeStyle {
+            switch style {
             case .large:   StoreView(ids: storeIDs).productViewStyle(.large)
             case .regular: StoreView(ids: storeIDs).productViewStyle(.regular)
             case .compact: StoreView(ids: storeIDs).productViewStyle(.compact)
             }
         }
         .storeButton(showRestorePurchases ? .visible : .hidden, for: .restorePurchases)
+        #if os(iOS)
         .storeButton(showRedeemCode ? .visible : .hidden, for: .redeemCode)
+        #endif
         .storeButton(showPolicies ? .visible : .hidden, for: .policies)
+    }
+
+    @ViewBuilder
+    private var storeSheet: some View {
+        PreviewSheet(
+            title: "StoreView",
+            modifiers: storeSheetModifiers,
+            variants: [
+                PreviewSheetVariant(
+                    label: ".regular",
+                    modifiers: ["StoreView(ids: [...])", "  .productViewStyle(.regular)"],
+                    content: AnyView(storeViewWithStyle(.regular))
+                ),
+                PreviewSheetVariant(
+                    label: ".compact",
+                    modifiers: ["StoreView(ids: [...])", "  .productViewStyle(.compact)"],
+                    content: AnyView(storeViewWithStyle(.compact))
+                ),
+                PreviewSheetVariant(
+                    label: ".large",
+                    modifiers: ["StoreView(ids: [...])", "  .productViewStyle(.large)"],
+                    content: AnyView(storeViewWithStyle(.large))
+                ),
+            ],
+            showDismissButton: true
+        ) { EmptyView() }
     }
 }

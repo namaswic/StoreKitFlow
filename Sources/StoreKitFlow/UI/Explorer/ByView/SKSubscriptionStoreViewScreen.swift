@@ -46,19 +46,88 @@ struct SKSubscriptionStoreViewScreen: View {
     @State private var structureShowHeader = true
     @State private var showStructureSheet = false
 
+    @State private var initSource: InitSourceOption = .groupID
+    @State private var useMarketingContent = true
+    @State private var useStoreContent = false
+    @State private var loadedProducts: [Product] = []
+    @State private var showInitSheet = false
+
+    @State private var controlPlacement: ControlPlacementOption = .automatic
+
+    @State private var visibleRelationship: SubscriptionRelationshipOption = .all
+    @State private var applyIntroOffer = false
+    @State private var applyPreferredOffer = false
+    @State private var showOffersSheet = false
+
+    @State private var optionGroupStyle: OptionGroupStyleOption = .automatic
+
+    @State private var showPrivacyPolicy = true
+    @State private var showTermsOfService = true
+    @State private var policyColor: PolicyColorOption = .secondary
+    @State private var showPolicySheet = false
+
     @State private var selectedSection: SSVSection? = nil
 
     private enum SSVSection: String, CaseIterable, Identifiable {
-        case accessory           = "Accessory"
-        case appearance          = "Appearance"
-        case containerBackground = "containerBackground"
-        case customControls      = "Custom Controls"
-        case dataBinding         = "Data Binding"
-        case sheetsAndOverlays   = "Sheets & Overlays"
-        case storeEvents         = "Store Events"
-        case structure           = "Structure"
-        case uiCustomization     = "UI Customization"
+        case accessory              = "Accessory"
+        case appearance             = "Appearance"
+        case containerBackground    = "containerBackground"
+        case customControls         = "Custom Controls"
+        case dataBinding            = "Data Binding"
+        case initializers           = "Initializers"
+        case policy                 = "Policy"
+        case sheetsAndOverlays      = "Sheets & Overlays"
+        case storeEvents            = "Store Events"
+        case structure              = "Structure"
+        case subscriptionOffers     = "Subscription Offers"
+        case uiCustomization        = "UI Customization"
         var id: String { rawValue }
+    }
+
+    private enum ControlPlacementOption: String, CaseIterable, Identifiable {
+        case automatic, bottomBar
+        var id: String { rawValue }
+        var label: String { ".\(rawValue)" }
+    }
+
+    fileprivate enum OptionGroupStyleOption: String, CaseIterable, Identifiable {
+        case automatic, tabs, links
+        var id: String { rawValue }
+        var label: String { ".\(rawValue)" }
+    }
+
+    private enum PolicyColorOption: String, CaseIterable, Identifiable {
+        case secondary, blue, red
+        var id: String { rawValue }
+        var label: String { rawValue.capitalized }
+        var color: Color {
+            switch self {
+            case .secondary: return .secondary
+            case .blue:      return .blue
+            case .red:       return .red
+            }
+        }
+    }
+
+    private enum SubscriptionRelationshipOption: String, CaseIterable, Identifiable {
+        case all, current, upgrade, downgrade, crossgrade
+        var id: String { rawValue }
+        var label: String { ".\(rawValue)" }
+        var value: Product.SubscriptionRelationship {
+            switch self {
+            case .all:        return .all
+            case .current:    return .current
+            case .upgrade:    return .upgrade
+            case .downgrade:  return .downgrade
+            case .crossgrade: return .crossgrade
+            }
+        }
+    }
+
+    private enum InitSourceOption: String, CaseIterable, Identifiable {
+        case groupID, productIDs, subscriptions
+        var id: String { rawValue }
+        var label: String { ".\(rawValue)" }
     }
 
     var body: some View {
@@ -79,6 +148,9 @@ struct SKSubscriptionStoreViewScreen: View {
                     .listRowBackground(Color.clear)
                 }
             }
+            if selectedSection == nil || selectedSection == .initializers         { initializerSection }
+            if selectedSection == nil || selectedSection == .policy              { policySection }
+            if selectedSection == nil || selectedSection == .subscriptionOffers  { subscriptionOffersSection }
             if selectedSection == nil || selectedSection == .storeEvents         { storeEventsSection }
             if selectedSection == nil || selectedSection == .sheetsAndOverlays   { sheetsAndOverlaysSection }
             if selectedSection == nil || selectedSection == .dataBinding         { dataBindingSection }
@@ -96,6 +168,9 @@ struct SKSubscriptionStoreViewScreen: View {
         .sheet(isPresented: $showCustomControlSheet) { customControlSheet }
         .sheet(isPresented: $showAccessorySheet) { accessorySheet }
         .sheet(isPresented: $showStructureSheet) { structureSheet }
+        .sheet(isPresented: $showInitSheet) { initializerSheet }
+        .sheet(isPresented: $showOffersSheet) { subscriptionOffersSheet }
+        .sheet(isPresented: $showPolicySheet) { policySheet }
         .manageSubscriptionsSheet(isPresented: $showManageSheet)
         .offerCodeRedemption(isPresented: $showOfferCodeSheet)
         .refundRequestSheet(for: refundTransactionID ?? 0, isPresented: $showRefundSheet) { result in
@@ -119,11 +194,20 @@ struct SKSubscriptionStoreViewScreen: View {
                     purchaseCompletionLog = "✗ \(error.localizedDescription)"
                 }
             }
+            await store.reconcile()
         }
         .subscriptionStatusTask(for: groupID) { taskState in
             if case .success(let statuses) = taskState {
                 subscriptionStatuses = statuses
             }
+        }
+        .task {
+            loadedProducts = (try? await Product.products(for: [
+                "com.storekitflow.demo.pro.monthly",
+                "com.storekitflow.demo.pro.yearly",
+                "com.storekitflow.demo.basic.monthly",
+                "com.storekitflow.demo.basic.yearly"
+            ])) ?? []
         }
     }
 
@@ -159,6 +243,12 @@ struct SKSubscriptionStoreViewScreen: View {
                 ForEach(ButtonLabelOption.allCases) { Text($0.label).tag($0) }
             }
             .hint("Text shown on the subscribe button — action, displayName, price, or multiline")
+            if #available(iOS 18.0, *) {
+                Picker("subscriptionStoreControlStyle placement", selection: $controlPlacement) {
+                    ForEach(ControlPlacementOption.allCases) { Text($0.label).tag($0) }
+                }
+                .hint("iOS 18+ — where the control is placed within the store view (.automatic or .bottomBar)")
+            }
             Toggle("Custom marketingContent: header", isOn: $showMarketingHeader)
                 .hint("Replaces the default header above the plan list with a custom view")
             Button { showAppearanceSheet = true } label: {
@@ -185,6 +275,11 @@ struct SKSubscriptionStoreViewScreen: View {
                     (".multiline",   "stacks plan name and price")
                 ])
                 InfoItem.api("marketingContent:", "custom header view shown above the plan list")
+                InfoItem.api(".subscriptionStoreControlStyle(_:placement:)", "iOS 18+ — overload that also specifies where the controls appear within the store view")
+                InfoItem.group("placement", variants: [
+                    (".automatic", "system-default placement"),
+                    (".bottomBar", "controls pinned to the bottom of the view")
+                ])
             }
         }
     }
@@ -193,40 +288,74 @@ struct SKSubscriptionStoreViewScreen: View {
     private var appearanceSheet: some View {
         let header = { AnyView(showMarketingHeader ? AnyView(paywallHeader) : AnyView(EmptyView())) }
         if #available(iOS 18.0, *) {
-            switch controlStyle {
-            case .buttons:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.buttons)
-                    .applyControlBackground(controlBackground)
-                    .applyButtonLabel(buttonLabel)
-            case .picker:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.picker)
-                    .applyControlBackground(controlBackground)
-                    .applyButtonLabel(buttonLabel)
-            case .prominentPicker:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.prominentPicker)
-                    .applyControlBackground(controlBackground)
-                    .applyButtonLabel(buttonLabel)
-            case .compactPicker:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.compactPicker)
-                    .applyControlBackground(controlBackground)
-                    .applyButtonLabel(buttonLabel)
+            let baseModifiers = { (style: String) -> [String] in
+                var lines = ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)"]
+                lines.append("  .subscriptionStoreControlStyle(.\(style))")
+                lines.append("  .subscriptionStoreControlBackground(.\(controlBackground.rawValue))")
+                lines.append("  .subscriptionStoreButtonLabel(.\(buttonLabel.rawValue))")
+                if showMarketingHeader { lines.append("  // + marketingContent: { ... }") }
+                return lines
             }
+            PreviewSheet(
+                title: "Appearance",
+                modifiers: appearanceModifiers,
+                variants: [
+                    PreviewSheetVariant(
+                        label: ".prominentPicker",
+                        modifiers: baseModifiers("prominentPicker"),
+                        content: AnyView(
+                            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                                .subscriptionStoreControlStyle(.prominentPicker, placement: .automatic)
+                                .applyControlBackground(controlBackground)
+                                .applyButtonLabel(buttonLabel)
+                        )
+                    ),
+                    PreviewSheetVariant(
+                        label: ".picker",
+                        modifiers: baseModifiers("picker"),
+                        content: AnyView(
+                            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                                .subscriptionStoreControlStyle(.picker, placement: .automatic)
+                                .applyControlBackground(controlBackground)
+                                .applyButtonLabel(buttonLabel)
+                        )
+                    ),
+                    PreviewSheetVariant(
+                        label: ".compactPicker",
+                        modifiers: baseModifiers("compactPicker"),
+                        content: AnyView(
+                            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                                .subscriptionStoreControlStyle(.compactPicker, placement: controlPlacement == .bottomBar ? .bottomBar : .automatic)
+                                .applyControlBackground(controlBackground)
+                                .applyButtonLabel(buttonLabel)
+                        )
+                    ),
+                    PreviewSheetVariant(
+                        label: ".buttons",
+                        modifiers: baseModifiers("buttons"),
+                        content: AnyView(
+                            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                                .subscriptionStoreControlStyle(.buttons, placement: .automatic)
+                                .applyControlBackground(controlBackground)
+                                .applyButtonLabel(buttonLabel)
+                        )
+                    ),
+                ]
+            ) { EmptyView() }
         } else {
-            switch controlStyle {
-            case .buttons:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.buttons)
-                    .applyControlBackground(controlBackground)
-                    .applyButtonLabel(buttonLabel)
-            case .picker, .prominentPicker, .compactPicker:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.prominentPicker)
-                    .applyControlBackground(controlBackground)
-                    .applyButtonLabel(buttonLabel)
+            PreviewSheet(title: "Appearance", modifiers: appearanceModifiers) {
+                switch controlStyle {
+                case .buttons:
+                    SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                        .subscriptionStoreControlStyle(.buttons)
+                        .applyControlBackground(controlBackground)
+                        .applyButtonLabel(buttonLabel)
+                case .picker, .prominentPicker, .compactPicker:
+                    SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                        .subscriptionStoreControlStyle(.prominentPicker)
+                        .applyControlBackground(controlBackground)
+                        .applyButtonLabel(buttonLabel)
+                }
             }
         }
     }
@@ -280,17 +409,42 @@ struct SKSubscriptionStoreViewScreen: View {
     @ViewBuilder
     private var containerSheet: some View {
         if #available(iOS 18.0, *) {
-            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all) {
-                VStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 44))
-                        .foregroundStyle(containerColor.color)
-                    Text("Go Pro")
-                        .font(.title2.bold())
-                }
-                .padding(.top, 24)
+            let makeContent = { (placement: ContainerPlacementOption) -> AnyView in
+                AnyView(
+                    SubscriptionStoreView(groupID: groupID, visibleRelationships: .all) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 44))
+                                .foregroundStyle(containerColor.color)
+                            Text("Go Pro")
+                                .font(.title2.bold())
+                        }
+                        .padding(.top, 24)
+                    }
+                    .applyContainerBackground(color: containerColor.color, placement: placement)
+                )
             }
-            .applyContainerBackground(color: containerColor.color, placement: containerPlacement)
+            PreviewSheet(
+                title: "containerBackground",
+                modifiers: containerModifiers,
+                variants: [
+                    PreviewSheetVariant(
+                        label: ".store",
+                        modifiers: ["  .containerBackground(\(containerColor.rawValue).gradient, for: .subscriptionStore)"],
+                        content: makeContent(.subscriptionStore)
+                    ),
+                    PreviewSheetVariant(
+                        label: ".header",
+                        modifiers: ["  .containerBackground(\(containerColor.rawValue).gradient, for: .subscriptionStoreHeader)"],
+                        content: makeContent(.subscriptionStoreHeader)
+                    ),
+                    PreviewSheetVariant(
+                        label: ".fullHeight",
+                        modifiers: ["  .containerBackground(\(containerColor.rawValue).gradient, for: .subscriptionStoreFullHeight)"],
+                        content: makeContent(.subscriptionStoreFullHeight)
+                    ),
+                ]
+            ) { EmptyView() }
         }
     }
 
@@ -324,10 +478,12 @@ struct SKSubscriptionStoreViewScreen: View {
     @ViewBuilder
     private var uiCustomSheet: some View {
         if #available(iOS 18.0, *) {
-            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)
-                .subscriptionStoreControlStyle(.picker)
-                .applyPickerItemBackground(pickerItemBg)
-                .applyCustomIconIfNeeded(useCustomIcon)
+            PreviewSheet(title: "UI Customization", modifiers: uiCustomModifiers) {
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)
+                    .subscriptionStoreControlStyle(.picker)
+                    .applyPickerItemBackground(pickerItemBg)
+                    .applyCustomIconIfNeeded(useCustomIcon)
+            }
         }
     }
 
@@ -365,23 +521,25 @@ struct SKSubscriptionStoreViewScreen: View {
     @ViewBuilder
     private var customControlSheet: some View {
         if #available(iOS 18.0, *) {
-            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all) {
-                VStack(spacing: 8) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 44))
-                        .foregroundStyle(accentColor.color)
-                    Text("Choose Your Plan")
-                        .font(.title2.bold())
+            PreviewSheet(title: "Custom Controls", modifiers: customControlModifiers) {
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "wand.and.stars")
+                            .font(.system(size: 44))
+                            .foregroundStyle(accentColor.color)
+                        Text("Choose Your Plan")
+                            .font(.title2.bold())
+                    }
+                    .padding(.top, 24)
                 }
-                .padding(.top, 24)
-            }
-            .subscriptionStoreControlStyle(
-                SSVCustomPickerStyle(
-                    accentColor: accentColor.color,
-                    showFamilyBadge: showFamilyBadge,
-                    buttonLabelStyle: customButtonLabel
+                .subscriptionStoreControlStyle(
+                    SSVCustomPickerStyle(
+                        accentColor: accentColor.color,
+                        showFamilyBadge: showFamilyBadge,
+                        buttonLabelStyle: customButtonLabel
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -422,12 +580,14 @@ struct SKSubscriptionStoreViewScreen: View {
     @ViewBuilder
     private var accessorySheet: some View {
         if #available(iOS 18.0, *) {
-            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)
-                .storeButton(showRestorePurchases ? .visible : .hidden, for: .restorePurchases)
-                .storeButton(showSignIn ? .visible : .hidden, for: .signIn)
-                .storeButton(showRedeemCode ? .visible : .hidden, for: .redeemCode)
-                .storeButton(showPolicies ? .visible : .hidden, for: .policies)
-                .applySignInActionIfNeeded(useSignInAction)
+            PreviewSheet(title: "Accessory", modifiers: accessoryModifiers) {
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)
+                    .storeButton(showRestorePurchases ? .visible : .hidden, for: .restorePurchases)
+                    .storeButton(showSignIn ? .visible : .hidden, for: .signIn)
+                    .storeButton(showRedeemCode ? .visible : .hidden, for: .redeemCode)
+                    .storeButton(showPolicies ? .visible : .hidden, for: .policies)
+                    .applySignInActionIfNeeded(useSignInAction)
+            }
         }
     }
 
@@ -516,6 +676,166 @@ struct SKSubscriptionStoreViewScreen: View {
         }
     }
 
+    // MARK: - Initializers
+
+    private var initializerSection: some View {
+        Section {
+            Picker("Source", selection: $initSource) {
+                ForEach(InitSourceOption.allCases) { Text($0.label).tag($0) }
+            }
+            .hint("How SubscriptionStoreView loads products — by group ID, product IDs, or pre-fetched Product values")
+            Toggle("Custom marketingContent header", isOn: $useMarketingContent)
+                .hint("Switches between marketingContent: init (custom header) and the automatic-header variant")
+            if #available(iOS 18.0, *) {
+                Toggle("Use @StoreContentBuilder (iOS 18+)", isOn: $useStoreContent)
+                    .hint("Switches to the content: @StoreContentBuilder init for structured plan hierarchies")
+            }
+            if initSource == .subscriptions && loadedProducts.isEmpty {
+                Text("Products not yet loaded — open sheet once they load.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Button { showInitSheet = true } label: {
+                Label("Open SubscriptionStoreView", systemImage: "play.circle.fill")
+            }
+        } header: {
+            Label("Initializers", systemImage: "function")
+        } footer: {
+            InfoBox {
+                InfoItem.group("init(groupID:visibleRelationships:)", variants: [
+                    ("marketingContent:", "custom SwiftUI header above the plan list"),
+                    ("(no marketingContent)", "uses AutomaticSubscriptionStoreMarketingContent"),
+                    ("content: @StoreContentBuilder", "iOS 18+ — structured plan hierarchy")
+                ])
+                InfoItem.group("init(productIDs:)", variants: [
+                    ("marketingContent:", "load specific IDs with a custom header"),
+                    ("content: @StoreContentBuilder", "iOS 18+ — structured layout from ID list")
+                ])
+                InfoItem.group("init(subscriptions:)", variants: [
+                    ("marketingContent:", "pass pre-fetched Product values with custom header"),
+                    ("content: @StoreContentBuilder", "iOS 18+ — structured layout from Product values")
+                ])
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var initializerSheet: some View {
+        let productIDs = [
+            "com.storekitflow.demo.pro.monthly",
+            "com.storekitflow.demo.pro.yearly",
+            "com.storekitflow.demo.basic.monthly",
+            "com.storekitflow.demo.basic.yearly"
+        ]
+        let header = { AnyView(useMarketingContent ? AnyView(paywallHeader) : AnyView(EmptyView())) }
+
+        if #available(iOS 18.0, *), useStoreContent {
+            switch initSource {
+            case .groupID:
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all) {
+                    SubscriptionPeriodGroupSet()
+                }
+            case .productIDs:
+                SubscriptionStoreView(productIDs: productIDs) {
+                    SubscriptionPeriodGroupSet()
+                }
+            case .subscriptions:
+                if loadedProducts.isEmpty {
+                    ContentUnavailableView("Loading Products", systemImage: "arrow.clockwise")
+                } else {
+                    SubscriptionStoreView(subscriptions: loadedProducts) {
+                        SubscriptionPeriodGroupSet()
+                    }
+                }
+            }
+        } else if useMarketingContent {
+            switch initSource {
+            case .groupID:
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+            case .productIDs:
+                SubscriptionStoreView(productIDs: productIDs, marketingContent: header)
+            case .subscriptions:
+                if loadedProducts.isEmpty {
+                    ContentUnavailableView("Loading Products", systemImage: "arrow.clockwise")
+                } else {
+                    SubscriptionStoreView(subscriptions: loadedProducts, marketingContent: header)
+                }
+            }
+        } else {
+            switch initSource {
+            case .groupID:
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)
+            case .productIDs:
+                SubscriptionStoreView(productIDs: productIDs)
+            case .subscriptions:
+                if loadedProducts.isEmpty {
+                    ContentUnavailableView("Loading Products", systemImage: "arrow.clockwise")
+                } else {
+                    SubscriptionStoreView(subscriptions: loadedProducts)
+                }
+            }
+        }
+    }
+
+    // MARK: - Subscription Offers
+
+    private var subscriptionOffersSection: some View {
+        Section {
+            Picker("visibleRelationships", selection: $visibleRelationship) {
+                ForEach(SubscriptionRelationshipOption.allCases) { Text($0.label).tag($0) }
+            }
+            .hint("Filters which plans are shown when the user already has an active subscription")
+            if #available(iOS 18.0, *) {
+                Toggle("preferredSubscriptionOffer (iOS 18+)", isOn: $applyPreferredOffer)
+                    .hint("Selects the first eligible offer for each plan — eligibleOffers only contains offers the user qualifies for")
+            }
+            if #available(iOS 26.0, *) {
+                Toggle("subscriptionIntroductoryOffer (iOS 26+)", isOn: $applyIntroOffer)
+                    .hint("Applies a JWS-signed introductory offer to eligible subscribers — signature generated server-side")
+            }
+            Button { showOffersSheet = true } label: {
+                Label("Preview with Offer Settings", systemImage: "tag.circle.fill")
+            }
+        } header: {
+            Label("Subscription Offers", systemImage: "tag.circle.fill")
+        } footer: {
+            InfoBox {
+                InfoItem.group("visibleRelationships", variants: [
+                    (".all",        "shows all plans regardless of current subscription"),
+                    (".current",    "shows only the plan the user is currently subscribed to"),
+                    (".upgrade",    "shows only plans with a higher level of service"),
+                    (".downgrade",  "shows only plans with a lower level of service"),
+                    (".crossgrade", "shows plans at the same level but different duration or type")
+                ])
+                InfoItem.api(".subscriptionPromotionalOffer(offer:compactJWS:)", "iOS 26+ — selects a promo offer to apply; system shows discounted terms in UI and signs the purchase with your JWS")
+                InfoItem.api(".subscriptionPromotionalOffer(offer:signature:)", "iOS 17.4–26 — deprecated variant using the older Signature type instead of compact JWS")
+                InfoItem.api(".subscriptionIntroductoryOffer(applyOffer:compactJWS:)", "iOS 26+ — controls whether the introductory offer is applied; your server returns a JWS to validate eligibility")
+                InfoItem.api(".preferredSubscriptionOffer { product, subscription, eligibleOffers in … }", "iOS 18+ — called before drawing each plan; return an offer from eligibleOffers to apply discounted terms in the UI")
+                InfoItem.note("eligibleOffers contains only offers the customer qualifies for — unlike subscriptionInfo.subscriptionOffers which may include ineligible ones.")
+                InfoItem.note("Promotional and introductory offer modifiers require server-side JWS signing — this demo shows visibleRelationships and the introductory offer toggle (sandbox only).")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var subscriptionOffersSheet: some View {
+        PreviewSheet(title: "Subscription Offers", modifiers: offersModifiers) {
+            if #available(iOS 26.0, *), applyIntroOffer {
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: visibleRelationship.value)
+                    .applyPreferredOfferIfNeeded(applyPreferredOffer)
+                    .subscriptionIntroductoryOffer(
+                        applyOffer: { _, _ in true },
+                        compactJWS: { _, _ in throw URLError(.badURL) }
+                    )
+            } else if #available(iOS 18.0, *), applyPreferredOffer {
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: visibleRelationship.value)
+                    .preferredSubscriptionOffer { _, _, eligible in eligible.first }
+            } else {
+                SubscriptionStoreView(groupID: groupID, visibleRelationships: visibleRelationship.value)
+            }
+        }
+    }
+
     // MARK: - Structure (iOS 18+)
 
     @available(iOS 18.0, *)
@@ -525,6 +845,10 @@ struct SKSubscriptionStoreViewScreen: View {
                 ForEach(SubscriptionControlStyleOption.allCases) { Text($0.label).tag($0) }
             }
             .hint("Layout style applied to the SubscriptionPeriodGroupSet structure")
+            Picker("subscriptionStoreOptionGroupStyle", selection: $optionGroupStyle) {
+                ForEach(OptionGroupStyleOption.allCases) { Text($0.label).tag($0) }
+            }
+            .hint("How top-level option groups are presented — .automatic, .tabs (tab bar), or .links (navigation links)")
             Toggle("Custom marketing header", isOn: $structureShowHeader)
                 .hint("Shows a custom header above the grouped plan structure")
             Button { showStructureSheet = true } label: {
@@ -538,6 +862,11 @@ struct SKSubscriptionStoreViewScreen: View {
                 InfoItem.api("SubscriptionOptionGroupSet", "a set of SubscriptionOptionGroups — compose multiple named groups into one store layout")
                 InfoItem.api("SubscriptionOptionGroup", "groups related options (e.g. all monthly plans) under a single named heading")
                 InfoItem.api("SubscriptionOptionSection", "a labeled sub-section within an option group")
+                InfoItem.group(".subscriptionStoreOptionGroupStyle", variants: [
+                    (".automatic", "system-default presentation for groups"),
+                    (".tabs",      "top-level groups shown as tabs in a tab bar"),
+                    (".links",     "first group shown with links to navigate to other groups")
+                ])
                 InfoItem.availability("iOS 18+")
             }
         }
@@ -547,20 +876,49 @@ struct SKSubscriptionStoreViewScreen: View {
     private var structureSheet: some View {
         if #available(iOS 18.0, *) {
             let header = { AnyView(structureShowHeader ? AnyView(structureHeader) : AnyView(EmptyView())) }
-            switch structureControlStyle {
-            case .buttons:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.buttons)
-            case .picker:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.picker)
-            case .prominentPicker:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.prominentPicker)
-            case .compactPicker:
-                SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
-                    .subscriptionStoreControlStyle(.compactPicker)
+            let makeContent = { (groupStyle: OptionGroupStyleOption) -> AnyView in
+                let view: any View
+                switch structureControlStyle {
+                case .buttons:
+                    view = SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                        .subscriptionStoreControlStyle(.buttons)
+                        .applyOptionGroupStyle(groupStyle)
+                case .picker:
+                    view = SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                        .subscriptionStoreControlStyle(.picker)
+                        .applyOptionGroupStyle(groupStyle)
+                case .prominentPicker:
+                    view = SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                        .subscriptionStoreControlStyle(.prominentPicker)
+                        .applyOptionGroupStyle(groupStyle)
+                case .compactPicker:
+                    view = SubscriptionStoreView(groupID: groupID, visibleRelationships: .all, marketingContent: header)
+                        .subscriptionStoreControlStyle(.compactPicker)
+                        .applyOptionGroupStyle(groupStyle)
+                }
+                return AnyView(view)
             }
+            PreviewSheet(
+                title: "Structure",
+                modifiers: structureModifiers,
+                variants: [
+                    PreviewSheetVariant(
+                        label: ".automatic",
+                        modifiers: ["  .subscriptionStoreOptionGroupStyle(.automatic)"],
+                        content: makeContent(.automatic)
+                    ),
+                    PreviewSheetVariant(
+                        label: ".tabs",
+                        modifiers: ["  .subscriptionStoreOptionGroupStyle(.tabs)"],
+                        content: makeContent(.tabs)
+                    ),
+                    PreviewSheetVariant(
+                        label: ".links",
+                        modifiers: ["  .subscriptionStoreOptionGroupStyle(.links)"],
+                        content: makeContent(.links)
+                    ),
+                ]
+            ) { EmptyView() }
         }
     }
 
@@ -578,6 +936,112 @@ struct SKSubscriptionStoreViewScreen: View {
                 .padding(.horizontal, 24)
         }
         .padding(.top, 24)
+    }
+    // MARK: - Policy
+
+    private var policySection: some View {
+        Section {
+            Toggle("Show Privacy Policy button", isOn: $showPrivacyPolicy)
+                .hint(".subscriptionStorePolicyDestination(url:for: .privacyPolicy)")
+            Toggle("Show Terms of Service button", isOn: $showTermsOfService)
+                .hint(".subscriptionStorePolicyDestination(url:for: .termsOfService)")
+            Picker("Policy button color", selection: $policyColor) {
+                ForEach(PolicyColorOption.allCases) { Text($0.label).tag($0) }
+            }
+            .hint(".subscriptionStorePolicyForegroundStyle — tint applied to both policy buttons")
+            Button { showPolicySheet = true } label: {
+                Label("Preview Policy Buttons", systemImage: "doc.text.fill")
+            }
+        } header: {
+            Label("Policy", systemImage: "doc.text.fill")
+        } footer: {
+            InfoBox {
+                InfoItem.api(".subscriptionStorePolicyDestination(url:for: .privacyPolicy)", "sets the URL opened when the user taps the Privacy Policy button")
+                InfoItem.api(".subscriptionStorePolicyDestination(url:for: .termsOfService)", "sets the URL opened when the user taps the Terms of Service button")
+                InfoItem.api(".subscriptionStorePolicyDestination(for:destination:)", "alternative: present a custom SwiftUI view instead of opening a URL")
+                InfoItem.api(".subscriptionStorePolicyForegroundStyle(_:)", "sets the foreground color of both policy buttons")
+                InfoItem.api(".subscriptionStorePolicyForegroundStyle(_:_:)", "sets primary (button text) and secondary (conjunction) colors separately")
+                InfoItem.note("At least one policy destination must be set for the policy buttons to appear by default. Use .storeButton(.visible, for: .policies) to force visibility.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var policySheet: some View {
+        let privacyURL = URL(string: "https://example.com/privacy")!
+        let termsURL = URL(string: "https://example.com/terms")!
+        PreviewSheet(title: "Policy", modifiers: policyModifiers) {
+            SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)
+                .applyPolicyDestinations(privacy: showPrivacyPolicy ? privacyURL : nil, terms: showTermsOfService ? termsURL : nil)
+                .subscriptionStorePolicyForegroundStyle(policyColor.color)
+                .storeButton(.visible, for: .policies)
+        }
+    }
+}
+
+// MARK: - Modifier Computed Vars
+
+extension SKSubscriptionStoreViewScreen {
+    fileprivate var appearanceModifiers: [String] {
+        var lines = ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)"]
+        lines.append("  .subscriptionStoreControlStyle(.\(controlStyle.rawValue))")
+        lines.append("  .subscriptionStoreControlBackground(.\(controlBackground.rawValue))")
+        lines.append("  .subscriptionStoreButtonLabel(.\(buttonLabel.rawValue))")
+        if showMarketingHeader { lines.append("  // + marketingContent: { YourHeaderView() }") }
+        return lines
+    }
+
+    fileprivate var containerModifiers: [String] {
+        ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)",
+         "  .containerBackground(\(containerColor.rawValue).gradient, for: .\(containerPlacement.rawValue))"]
+    }
+
+    fileprivate var uiCustomModifiers: [String] {
+        var lines = ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)",
+                     "  .subscriptionStoreControlStyle(.picker)",
+                     "  .subscriptionStorePickerItemBackground(.\(pickerItemBg.rawValue))"]
+        if useCustomIcon { lines.append("  .subscriptionStoreControlIcon { _, _ in Image(systemName: \"star.circle.fill\") }") }
+        return lines
+    }
+
+    fileprivate var customControlModifiers: [String] {
+        ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)",
+         "  .subscriptionStoreControlStyle(SSVCustomPickerStyle(",
+         "      accentColor: \(accentColor.rawValue),",
+         "      showFamilyBadge: \(showFamilyBadge)))"]
+    }
+
+    fileprivate var accessoryModifiers: [String] {
+        var lines = ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)"]
+        if showRestorePurchases { lines.append("  .storeButton(.visible, for: .restorePurchases)") }
+        if showSignIn           { lines.append("  .storeButton(.visible, for: .signIn)") }
+        if showRedeemCode       { lines.append("  .storeButton(.visible, for: .redeemCode)") }
+        if showPolicies         { lines.append("  .storeButton(.visible, for: .policies)") }
+        if useSignInAction      { lines.append("  .subscriptionStoreSignInAction { /* present auth */ }") }
+        return lines
+    }
+
+    fileprivate var structureModifiers: [String] {
+        ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)",
+         "  .subscriptionStoreControlStyle(.\(structureControlStyle.rawValue))",
+         "  .subscriptionStoreOptionGroupStyle(.\(optionGroupStyle.rawValue))",
+         "  // content: { SubscriptionPeriodGroupSet() }"]
+    }
+
+    fileprivate var offersModifiers: [String] {
+        var lines = ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .\(visibleRelationship.rawValue))"]
+        if applyPreferredOffer { lines.append("  .preferredSubscriptionOffer { _, _, eligible in eligible.first }") }
+        if applyIntroOffer     { lines.append("  .subscriptionIntroductoryOffer(applyOffer: { _, _ in true }, compactJWS: { ... })") }
+        return lines
+    }
+
+    fileprivate var policyModifiers: [String] {
+        var lines = ["SubscriptionStoreView(groupID: groupID, visibleRelationships: .all)"]
+        if showPrivacyPolicy  { lines.append("  .subscriptionStorePolicyDestination(url: privacyURL, for: .privacyPolicy)") }
+        if showTermsOfService { lines.append("  .subscriptionStorePolicyDestination(url: termsURL, for: .termsOfService)") }
+        lines.append("  .subscriptionStorePolicyForegroundStyle(.\(policyColor.rawValue))")
+        lines.append("  .storeButton(.visible, for: .policies)")
+        return lines
     }
 }
 
@@ -699,6 +1163,41 @@ private extension View {
     func applySignInActionIfNeeded(_ enabled: Bool) -> some View {
         if enabled {
             self.subscriptionStoreSignInAction { }
+        } else {
+            self
+        }
+    }
+
+    @available(iOS 18.0, *)
+    @ViewBuilder
+    func applyOptionGroupStyle(_ option: SKSubscriptionStoreViewScreen.OptionGroupStyleOption) -> some View {
+        switch option {
+        case .automatic: self.subscriptionStoreOptionGroupStyle(.automatic)
+        case .tabs:      self.subscriptionStoreOptionGroupStyle(.tabs)
+        case .links:     self.subscriptionStoreOptionGroupStyle(.links)
+        }
+    }
+
+    @available(iOS 18.0, *)
+    @ViewBuilder
+    func applyPreferredOfferIfNeeded(_ enabled: Bool) -> some View {
+        if enabled {
+            self.preferredSubscriptionOffer { _, _, eligible in eligible.first }
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func applyPolicyDestinations(privacy: URL?, terms: URL?) -> some View {
+        if let privacy, let terms {
+            self
+                .subscriptionStorePolicyDestination(url: privacy, for: .privacyPolicy)
+                .subscriptionStorePolicyDestination(url: terms, for: .termsOfService)
+        } else if let privacy {
+            self.subscriptionStorePolicyDestination(url: privacy, for: .privacyPolicy)
+        } else if let terms {
+            self.subscriptionStorePolicyDestination(url: terms, for: .termsOfService)
         } else {
             self
         }

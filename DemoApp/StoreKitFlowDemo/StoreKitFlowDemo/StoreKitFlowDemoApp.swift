@@ -17,7 +17,8 @@ struct StoreKitFlowDemoApp: App {
         ],
         subscriptionGroupIDs: ["763D6759"],
         appStoreID: "1632168877",
-        storeKitConfigFileName: "Demo"
+        storeKitConfigFileName: "Demo",
+        enableTransactionCache: true
     )
 
     @StateObject private var store = StoreKitFlowStore(configuration: Self.configuration)

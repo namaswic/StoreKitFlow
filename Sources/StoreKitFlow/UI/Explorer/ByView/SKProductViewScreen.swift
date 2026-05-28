@@ -20,7 +20,19 @@ struct SKProductViewScreen: View {
     @State private var overlayPosition: OverlayPositionOption = .bottom
     @State private var showOverlay = false
 
+    @State private var useAppAccountToken = false
+    @State private var appAccountToken = UUID()
+    @State private var purchaseQuantity = 1
+    @State private var simulatesAskToBuy = false
+    @State private var showPurchaseOptionsSheet = false
+
+    @State private var loadedProducts: [Product] = []
+    @State private var loadProductsError: String?
+    @State private var entitlementStatus: String = "—"
+    @State private var productDescriptionVisibility: Visibility = .automatic
+
     private let demoProductID = "com.storekitflow.demo.removeads"
+    private let secondProductID = "com.storekitflow.demo.coins10"
 
     private var productIcon: some View {
         Image(systemName: "nosign")
@@ -34,58 +46,100 @@ struct SKProductViewScreen: View {
     @State private var selectedSection: ProductViewSection? = nil
 
     private enum ProductViewSection: String, CaseIterable, Identifiable {
-        case dataBinding  = "Data Binding"
-        case overlay      = "appStoreOverlay"
-        case refund       = "refundRequestSheet"
-        case styleAndIcon = "Style & Icon"
-        case storeEvents  = "Store Events"
+        case dataBinding       = "Data Binding"
+        case overlay           = "appStoreOverlay"
+        case purchaseOptions   = "inAppPurchaseOptions"
+        case refund            = "refundRequestSheet"
+        case styleAndIcon      = "Style & Icon"
+        case storeEvents       = "Store Events"
         var id: String { rawValue }
     }
 
     var body: some View {
+        listWithModifiers
+            .onInAppPurchaseStart { product in
+                await MainActor.run { purchaseStartLog = "Started: \(product.displayName)" }
+            }
+            .onInAppPurchaseCompletion { product, result in
+                await MainActor.run {
+                    switch result {
+                    case .success(let purchaseResult):
+                        purchaseCompletionLog = "✓ \(product.displayName) — \(purchaseResult)"
+                    case .failure(let error):
+                        purchaseCompletionLog = "✗ \(product.displayName) — \(error.localizedDescription)"
+                    }
+                }
+                await store.reconcile()
+            }
+            .storeProductTask(for: demoProductID) { taskState in
+                switch taskState {
+                case .success(let product): loadedProduct = product
+                case .failure(let error):   loadError = error.localizedDescription
+                case .loading:              break
+                case .unavailable:          loadError = "Product unavailable"
+                @unknown default:           break
+                }
+            }
+            .storeProductsTask(for: [demoProductID, secondProductID]) { taskState in
+                switch taskState {
+                case .success(let loaded): loadedProducts = loaded.0
+                case .failure(let error):  loadProductsError = error.localizedDescription
+                case .loading:             break
+                @unknown default:          break
+                }
+            }
+            .currentEntitlementTask(for: demoProductID) { taskState in
+                await MainActor.run {
+                    switch taskState {
+                    case .success(let verificationResult):
+                        if let result = verificationResult {
+                            switch result {
+                            case .verified:   entitlementStatus = "Owned (verified)"
+                            case .unverified: entitlementStatus = "Owned (unverified)"
+                            }
+                        } else {
+                            entitlementStatus = "Not owned"
+                        }
+                    case .failure(let error): entitlementStatus = "Error: \(error.localizedDescription)"
+                    case .loading:            entitlementStatus = "Loading…"
+                    @unknown default:         break
+                    }
+                }
+            }
+            .refundRequestSheet(for: refundTransactionID ?? 0, isPresented: $showRefundSheet) { result in
+                switch result {
+                case .success(let status): refundResult = "Status: \(status)"
+                case .failure(let error):  refundResult = "Error: \(error.localizedDescription)"
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var listWithModifiers: some View {
+        theList
+            #if os(iOS)
+            .appStoreOverlay(isPresented: $showOverlay) {
+                SKOverlay.AppConfiguration(appIdentifier: store.configuration.appStoreID ?? "1632168877", position: overlayPosition.skPosition)
+            }
+            #endif
+    }
+
+    @ViewBuilder
+    private var theList: some View {
         List {
-            if selectedSection == nil || selectedSection == .styleAndIcon { styleSection }
-            if selectedSection == nil || selectedSection == .storeEvents  { storeEventsSection }
-            if selectedSection == nil || selectedSection == .refund       { refundSection }
-            if selectedSection == nil || selectedSection == .overlay      { overlaySection }
-            if selectedSection == nil || selectedSection == .dataBinding  { dataBindingSection }
+            if selectedSection == nil || selectedSection == .styleAndIcon    { styleSection }
+            if selectedSection == nil || selectedSection == .storeEvents     { storeEventsSection }
+            if selectedSection == nil || selectedSection == .purchaseOptions { purchaseOptionsSection }
+            if selectedSection == nil || selectedSection == .refund          { refundSection }
+            if selectedSection == nil || selectedSection == .overlay         { overlaySection }
+            if selectedSection == nil || selectedSection == .dataBinding     { dataBindingSection }
         }
+        .sheet(isPresented: $showLargeSheet) { largeSheet }
+        .sheet(isPresented: $showPurchaseOptionsSheet) { purchaseOptionsSheet }
         .listSectionSpacing(12)
         .navigationTitle("ProductView")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top) { sectionFilterBar }
-        .sheet(isPresented: $showLargeSheet) { largeSheet }
-        .appStoreOverlay(isPresented: $showOverlay) {
-            SKOverlay.AppConfiguration(appIdentifier: store.configuration.appStoreID ?? "1632168877", position: overlayPosition.skPosition)
-        }
-        .refundRequestSheet(for: refundTransactionID ?? 0, isPresented: $showRefundSheet) { result in
-            switch result {
-            case .success(let status): refundResult = "Status: \(status)"
-            case .failure(let error):  refundResult = "Error: \(error.localizedDescription)"
-            }
-        }
-        .onInAppPurchaseStart { product in
-            await MainActor.run { purchaseStartLog = "Started: \(product.displayName)" }
-        }
-        .onInAppPurchaseCompletion { product, result in
-            await MainActor.run {
-                switch result {
-                case .success(let purchaseResult):
-                    purchaseCompletionLog = "✓ \(product.displayName) — \(purchaseResult)"
-                case .failure(let error):
-                    purchaseCompletionLog = "✗ \(product.displayName) — \(error.localizedDescription)"
-                }
-            }
-        }
-        .storeProductTask(for: demoProductID) { taskState in
-            switch taskState {
-            case .success(let product): loadedProduct = product
-            case .failure(let error):   loadError = error.localizedDescription
-            case .loading:              break
-            case .unavailable:          loadError = "Product unavailable"
-            @unknown default:           break
-            }
-        }
     }
 
     private var sectionFilterBar: some View {
@@ -114,6 +168,12 @@ struct SKProductViewScreen: View {
             .hint("Controls the layout density — .regular, .compact, or .large")
             Toggle("productIconBorder()", isOn: $iconBorder)
             .hint("Applies Apple's standard rounded border to your custom icon view")
+            Picker("productDescription", selection: $productDescriptionVisibility) {
+                Text(".automatic").tag(Visibility.automatic)
+                Text(".visible").tag(Visibility.visible)
+                Text(".hidden").tag(Visibility.hidden)
+            }
+            .hint("Controls whether the product description text appears below the title")
             Group {
                 switch productStyle {
                 case .regular:
@@ -121,11 +181,13 @@ struct SKProductViewScreen: View {
                         productIcon.applyBorderIfNeeded(iconBorder)
                     }
                     .productViewStyle(.regular)
+                    .productDescription(productDescriptionVisibility)
                 case .compact:
                     ProductView(id: demoProductID) {
                         productIcon.applyBorderIfNeeded(iconBorder)
                     }
                     .productViewStyle(.compact)
+                    .productDescription(productDescriptionVisibility)
                 case .large:
                     Button { showLargeSheet = true } label: {
                         Label("Open .large ProductView", systemImage: "arrow.up.square")
@@ -142,13 +204,25 @@ struct SKProductViewScreen: View {
                     (".large",   "prominent hero card — always present in a sheet")
                 ])
                 InfoItem.api(".productIconBorder()", "applies Apple's standard rounded-rectangle border to your custom icon view")
+                InfoItem.group(".productDescription", variants: [
+                    (".automatic", "system default — shows description when space allows"),
+                    (".visible",   "always show the product description"),
+                    (".hidden",    "always hide the product description")
+                ])
             }
         }
     }
 
+    private var largeSheetModifiers: [String] {
+        var lines = ["ProductView(id: productID)"]
+        lines.append("  .productViewStyle(.large)")
+        if iconBorder { lines.append("  .productIconBorder()") }
+        return lines
+    }
+
     @ViewBuilder
     private var largeSheet: some View {
-        NavigationStack {
+        PreviewSheet(title: "ProductView — .large", modifiers: largeSheetModifiers, showDismissButton: true) {
             VStack {
                 Spacer()
                 ProductView(id: demoProductID) {
@@ -157,13 +231,6 @@ struct SKProductViewScreen: View {
                 .productViewStyle(.large)
                 .padding(.horizontal)
                 Spacer()
-            }
-            .navigationTitle("ProductView — .large")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { showLargeSheet = false }
-                }
             }
         }
     }
@@ -195,6 +262,73 @@ struct SKProductViewScreen: View {
                 InfoItem.api(".onInAppPurchaseCompletion { product, result in … }", "async closure called after the purchase sheet is dismissed — result is Result<Product.PurchaseResult, Error>")
                 InfoItem.note("Both modifiers bubble up the view hierarchy — attach them anywhere above your ProductView or StoreView.")
             }
+        }
+    }
+
+    // MARK: - Purchase Options
+
+    private var activePurchaseOptions: Set<Product.PurchaseOption> {
+        var options: Set<Product.PurchaseOption> = []
+        if useAppAccountToken { options.insert(.appAccountToken(appAccountToken)) }
+        if purchaseQuantity > 1 { options.insert(.quantity(purchaseQuantity)) }
+        if simulatesAskToBuy { options.insert(.simulatesAskToBuyInSandbox(true)) }
+        return options
+    }
+
+    private var purchaseOptionsSection: some View {
+        Section {
+            Toggle("appAccountToken", isOn: Binding(
+                get: { useAppAccountToken },
+                set: { useAppAccountToken = $0; if $0 { appAccountToken = UUID() } }
+            ))
+            .hint("Links the purchase to an app-side account — appears in the transaction's appAccountToken field")
+            if useAppAccountToken {
+                LabeledContent("Token", value: appAccountToken.uuidString)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Stepper("quantity: \(purchaseQuantity)", value: $purchaseQuantity, in: 1...10)
+                .hint("Purchase multiple units — meaningful for consumables and non-renewing subscriptions")
+            Toggle("simulatesAskToBuyInSandbox", isOn: $simulatesAskToBuy)
+                .hint("Triggers the Ask to Buy parental approval flow in sandbox")
+            Button { showPurchaseOptionsSheet = true } label: {
+                Label("Open ProductView with Options", systemImage: "slider.horizontal.3")
+            }
+        } header: {
+            Label("inAppPurchaseOptions", systemImage: "slider.horizontal.3")
+        } footer: {
+            InfoBox {
+                InfoItem.api(".inAppPurchaseOptions { product in … }", "called before each purchase — return a Set<Product.PurchaseOption> to inject into the transaction")
+                InfoItem.api(".appAccountToken(UUID)", "links the purchase to an app-side user account — appears in the transaction's appAccountToken field")
+                InfoItem.api(".quantity(Int)", "purchase multiple units — only meaningful for consumables and non-renewing subscriptions")
+                InfoItem.api(".simulatesAskToBuyInSandbox(Bool)", "triggers the Ask to Buy parental approval flow in sandbox — use to test deferred purchase handling")
+                InfoItem.note("The closure receives the specific Product being purchased — you can vary options per product. Pass nil to clear any options ancestor views added.")
+            }
+        }
+    }
+
+    private var purchaseOptionsModifiers: [String] {
+        var lines = ["ProductView(id: productID)"]
+        lines.append("  .inAppPurchaseOptions { _ in options }")
+        if useAppAccountToken   { lines.append("  // .appAccountToken(\(appAccountToken.uuidString.prefix(8))...)") }
+        if purchaseQuantity > 1 { lines.append("  // .quantity(\(purchaseQuantity))") }
+        if simulatesAskToBuy    { lines.append("  // .simulatesAskToBuyInSandbox(true)") }
+        return lines
+    }
+
+    @ViewBuilder
+    private var purchaseOptionsSheet: some View {
+        PreviewSheet(title: "inAppPurchaseOptions", modifiers: purchaseOptionsModifiers, showDismissButton: true) {
+            VStack {
+                Spacer()
+                ProductView(id: demoProductID) {
+                    productIcon
+                }
+                .productViewStyle(.large)
+                .padding(.horizontal)
+                Spacer()
+            }
+            .inAppPurchaseOptions { _ in activePurchaseOptions }
         }
     }
 
@@ -231,9 +365,8 @@ struct SKProductViewScreen: View {
     private var dataBindingSection: some View {
         Section {
             if let product = loadedProduct {
-                LabeledContent("displayName", value: product.displayName)
+                LabeledContent("storeProductTask", value: product.displayName)
                 LabeledContent("displayPrice", value: product.displayPrice)
-                LabeledContent("type", value: product.type.rawValue)
             } else if let error = loadError {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
@@ -241,17 +374,38 @@ struct SKProductViewScreen: View {
             } else {
                 HStack {
                     ProgressView()
-                    Text("Loading product…")
+                    Text("storeProductTask loading…")
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 }
             }
+            Divider()
+            if loadedProducts.isEmpty && loadProductsError == nil {
+                HStack {
+                    ProgressView()
+                    Text("storeProductsTask loading…")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
+            } else if let error = loadProductsError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+                    .font(.caption)
+            } else {
+                ForEach(loadedProducts, id: \.id) { product in
+                    LabeledContent("storeProductsTask", value: product.displayName)
+                }
+            }
+            Divider()
+            LabeledContent("currentEntitlementTask", value: entitlementStatus)
         } header: {
-            Label("storeProductTask", systemImage: "bolt.fill")
+            Label("Data Binding", systemImage: "bolt.fill")
         } footer: {
             InfoBox {
-                InfoItem.api(".storeProductTask(for: productID)", "declarative modifier that loads a single product without manual async code — fires on appear and on StoreKit updates")
-                InfoItem.api("result: Result<Product, Error>", "closure receives .success(product) or .failure(error) — update local @State to drive UI")
+                InfoItem.api(".storeProductTask(for: productID)", "loads a single product declaratively — fires on appear and on StoreKit updates")
+                InfoItem.api(".storeProductsTask(for: [ids])", "loads a collection of products — use when you need multiple products loaded and kept in sync")
+                InfoItem.api(".currentEntitlementTask(for: productID)", "fires whenever the user's entitlement for a product changes — nil for consumables")
+                InfoItem.note("All three task modifiers restart automatically when their input parameter changes.")
                 InfoItem.availability("iOS 17+")
             }
         }
@@ -278,6 +432,13 @@ struct SKProductViewScreen: View {
                 InfoItem.api(".bottomRaised", "overlay raised above the bottom — useful when a tab bar is present")
             }
         }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func applyBorderIfNeeded(_ apply: Bool) -> some View {
+        if apply { self.productIconBorder() } else { self }
     }
 }
 

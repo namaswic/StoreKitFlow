@@ -36,8 +36,18 @@ struct SKByViewScreen: View {
                     color: .orange,
                     destination: SKSubscriptionOfferViewScreen()
                 )
+                #if os(iOS)
+                viewRow(
+                    title: "Sheets & Overlays",
+                    description: "System-provided sheets and overlays that work independently of any store view — manage subscriptions, offer codes, refunds, and App Store overlays.",
+                    chips: ["manageSubscriptionsSheet", "offerCodeRedemption", "refundRequestSheet", "appStoreOverlay"],
+                    icon: "rectangle.stack.badge.plus",
+                    color: .teal,
+                    destination: SKSheetsScreen()
+                )
+                #endif
             }
-            .navigationTitle("By View")
+            .navigationTitle("Explorer")
         }
     }
 

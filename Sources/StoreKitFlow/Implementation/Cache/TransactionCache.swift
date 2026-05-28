@@ -40,11 +40,32 @@ final class TransactionCache {
     /// All cached transactions, ordered oldest first.
     func all() -> [CachedTransaction] { entries }
 
-    /// Records a transaction. If a record with the same `id` already exists, it is replaced
-    /// (e.g. to update `finishedAt` after `finish()` is called).
+    /// Records a transaction. If a record with the same `id` already exists, the new delivery
+    /// event is appended to its `deliveryLog` and metadata is refreshed (e.g. `finishedAt`).
+    /// If it is new, the full entry is appended.
     func record(_ entry: CachedTransaction) {
         if let index = entries.firstIndex(where: { $0.id == entry.id }) {
-            entries[index] = entry
+            var existing = entries[index]
+            existing.deliveryLog.append(contentsOf: entry.deliveryLog)
+            // Refresh finishedAt if this call has it and the existing record doesn't
+            if existing.finishedAt == nil, let finished = entry.finishedAt {
+                entries[index] = CachedTransaction(
+                    id: existing.id,
+                    originalID: existing.originalID,
+                    productID: existing.productID,
+                    productType: existing.productType,
+                    purchaseDate: existing.purchaseDate,
+                    expirationDate: existing.expirationDate,
+                    revocationDate: existing.revocationDate,
+                    appAccountToken: existing.appAccountToken,
+                    environment: existing.environment,
+                    finishedAt: finished,
+                    source: existing.source,
+                    deliveryLog: existing.deliveryLog
+                )
+            } else {
+                entries[index] = existing
+            }
         } else {
             entries.append(entry)
         }
