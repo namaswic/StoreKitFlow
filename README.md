@@ -88,7 +88,7 @@ case .failed(let error):               showError(error)
 }
 ```
 
-**Automatic missed renewal recovery** — if your app is killed mid-renewal, StoreKitFlow's reconciliation pass catches it on next launch. No code needed.
+**Automatic missed renewal recovery** — if your app is killed mid-renewal, StoreKitFlow's reconciliation pass runs on every `initialize()` and catches it automatically. This is the single most common production StoreKit failure — a user pays, the device kills the app before `finish()` runs, and the renewal is silently lost forever. StoreKitFlow is the only StoreKit library that solves this out of the box. No code needed.
 
 **Re-subscribe protection** — StoreKit silently returns `.success` without a payment sheet when unfinished transactions are in the queue. One parameter fixes it:
 ```swift
@@ -151,7 +151,7 @@ See [GETTING_STARTED.md](GETTING_STARTED.md) for full setup, StoreKit configurat
 
 **Structured, filterable logs.** `StoreLogEvent` carries a category, icon, severity flag, and searchable text — not just a console string. Pipe it to your own analytics, filter by error in the Explorer, or suppress it entirely by swapping in a silent logger.
 
-**Sandbox and production parity.** The transaction cache, delivery trail, and Explorer work identically in both environments. The `environment` field on every cached transaction (`"Sandbox"` or `"Production"`) makes it easy to filter during testing without changing any code.
+**Three-environment parity.** The transaction cache, delivery trail, and Explorer work identically in the Xcode test environment, Sandbox, and Production — no conditional code, no test-only shims. Every cached transaction carries an `environment` field (`"Xcode"`, `"Sandbox"`, or `"Production"`) so you can filter by environment when debugging without changing any code.
 
 ---
 
