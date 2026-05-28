@@ -1,6 +1,4 @@
-import Combine
-
-public final class MockEntitlementService: EntitlementCheckable {
+public final class MockEntitlementService: EntitlementCheckable, IntroOfferCheckable {
     public let stubbedEntitlements: Set<String>
     public let stubbedIntroEligibility: Bool
 
@@ -15,13 +13,5 @@ public final class MockEntitlementService: EntitlementCheckable {
 
     public func isEligibleForIntroOffer(productID: String) async -> Bool {
         stubbedIntroEligibility
-    }
-
-    public func currentEntitlementsPublisher() -> AnyPublisher<Set<String>, Never> {
-        Just(stubbedEntitlements).eraseToAnyPublisher()
-    }
-
-    public func isEligibleForIntroOfferPublisher(productID: String) -> AnyPublisher<Bool, Never> {
-        Just(stubbedIntroEligibility).eraseToAnyPublisher()
     }
 }

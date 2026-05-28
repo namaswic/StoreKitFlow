@@ -8,20 +8,6 @@ public final class ProductService: ProductFetchable {
         let products = try await Product.products(for: ids)
         return products.map(StoreProduct.init)
     }
-
-    public func fetchProductsPublisher(ids: [String]) -> AnyPublisher<[StoreProduct], Error> {
-        Future { promise in
-            Task {
-                do {
-                    let products = try await Product.products(for: ids)
-                    promise(.success(products.map(StoreProduct.init)))
-                } catch {
-                    promise(.failure(error))
-                }
-            }
-        }
-        .eraseToAnyPublisher()
-    }
 }
 
 private extension StoreProduct {

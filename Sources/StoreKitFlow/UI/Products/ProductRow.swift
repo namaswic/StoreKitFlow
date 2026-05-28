@@ -3,6 +3,7 @@ import SwiftUI
 struct ProductRow: View {
     let product: StoreProduct
     @EnvironmentObject private var store: StoreKitFlowStore
+    @State private var showPurchaseOptions = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -20,19 +21,34 @@ struct ProductRow: View {
                     .foregroundStyle(.green)
                     .font(.title3)
             } else {
-                Button {
-                    Task { await store.purchase(product) }
-                } label: {
-                    Text(product.displayPrice)
-                        .font(.subheadline)
-                        .bold()
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(.blue, in: Capsule())
-                        .foregroundStyle(.white)
+                HStack(spacing: 6) {
+                    Button {
+                        Task { await store.purchase(product) }
+                    } label: {
+                        Text(product.displayPrice)
+                            .font(.subheadline)
+                            .bold()
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(.blue, in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(store.isPurchasing)
+
+                    Button {
+                        showPurchaseOptions = true
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundStyle(.secondary)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .sheet(isPresented: $showPurchaseOptions) {
+                        PurchaseOptionsSheet(product: product)
+                            .environmentObject(store)
+                    }
                 }
-                .buttonStyle(.plain)
-                .disabled(store.isPurchasing)
             }
             NavigationLink(destination: ProductDetailScreen(product: product)) {
                 Image(systemName: "info.circle")

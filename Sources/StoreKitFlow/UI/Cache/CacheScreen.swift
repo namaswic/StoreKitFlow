@@ -134,24 +134,22 @@ struct CacheTransactionDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(entry.deliveryLog) { event in
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(spacing: 6) {
-                                Text(event.path.rawValue)
-                                    .font(.system(.caption, design: .monospaced).weight(.medium))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(pathColor(event.path).opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
-                                Text(event.source.rawValue.capitalized)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                    ForEach(entry.deliveryLog.reversed()) { event in
+                        NavigationLink(destination: DeliveryEventDetailView(entry: entry, event: event, dateFormatter: dateFormatter)) {
+                            HStack(spacing: 10) {
+                                Circle()
+                                    .fill(pathColor(event.path))
+                                    .frame(width: 8, height: 8)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(event.path.rawValue)
+                                        .font(.system(.caption, design: .monospaced).weight(.medium))
+                                    Text(dateFormatter.string(from: event.date))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                            Text(dateFormatter.string(from: event.date))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            .padding(.vertical, 2)
                         }
-                        .padding(.vertical, 2)
                     }
                 }
             } header: {
@@ -175,5 +173,63 @@ struct CacheTransactionDetailView: View {
         case .transactionUnfinished: return .orange
         case .reconciliation:       return .purple
         }
+    }
+}
+
+// MARK: - Delivery Event Detail
+
+struct DeliveryEventDetailView: View {
+    let entry: CachedTransaction
+    let event: TransactionDeliveryEvent
+    let dateFormatter: DateFormatter
+
+    private var pathDescription: String {
+        switch event.path {
+        case .storePurchase:
+            return "The user tapped Buy in your app's own UI and the purchase completed via store.purchase()."
+        case .transactionUpdates:
+            return "StoreKit delivered this transaction through Transaction.updates — typically a renewal, revocation, family sharing event, or Ask to Buy approval."
+        case .transactionUnfinished:
+            return "Found in Transaction.unfinished during app launch. This transaction was verified in a previous session but finish() was never called — likely due to a crash or background kill."
+        case .reconciliation:
+            return "Detected during a reconciliation pass of Transaction.currentEntitlements. This renewal was missed by the updates listener (e.g. the app was killed mid-renewal) and caught on next launch."
+        }
+    }
+
+    var body: some View {
+        List {
+            Section("Identity") {
+                LabeledContent("Transaction ID", value: "#\(entry.id)")
+                LabeledContent("Original Txn ID", value: "#\(entry.originalID)")
+                LabeledContent("Product ID", value: entry.productID)
+            }
+            Section("Product") {
+                LabeledContent("Type", value: entry.productType.rawValue.capitalized)
+                LabeledContent("Environment", value: entry.environment)
+                LabeledContent("Source", value: entry.source.rawValue.capitalized)
+            }
+            Section("Dates") {
+                LabeledContent("Purchased", value: dateFormatter.string(from: entry.purchaseDate))
+                LabeledContent("Expires", value: entry.expirationDate.map { dateFormatter.string(from: $0) } ?? "—")
+                LabeledContent("Revoked", value: entry.revocationDate.map { dateFormatter.string(from: $0) } ?? "—")
+                LabeledContent("Finished At", value: entry.finishedAt.map { dateFormatter.string(from: $0) } ?? "Not finished")
+            }
+            Section("Metadata") {
+                LabeledContent("App Account Token", value: entry.appAccountToken.map { $0.uuidString } ?? "—")
+            }
+            Section {
+                LabeledContent("Code Path", value: event.path.rawValue)
+                LabeledContent("Source", value: event.source.rawValue.capitalized)
+                LabeledContent("Delivered At", value: dateFormatter.string(from: event.date))
+                LabeledContent("Event ID", value: event.id.uuidString)
+                Text(pathDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("This Delivery")
+            }
+        }
+        .navigationTitle("Delivery Event")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

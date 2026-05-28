@@ -6,5 +6,19 @@ public protocol Purchasable: Sendable {
         product: StoreProduct,
         attributes: PurchaseAttributes
     ) async throws -> Product.PurchaseResult
-    func purchasePublisher(product: StoreProduct, attributes: PurchaseAttributes) -> AnyPublisher<Product.PurchaseResult, Error>
+}
+
+public extension Purchasable {
+    func purchasePublisher(
+        product: StoreProduct,
+        attributes: PurchaseAttributes = PurchaseAttributes()
+    ) -> AnyPublisher<Product.PurchaseResult, Error> {
+        Future { promise in
+            Task {
+                do { promise(.success(try await self.purchase(product: product, attributes: attributes))) }
+                catch { promise(.failure(error)) }
+            }
+        }
+        .eraseToAnyPublisher()
+    }
 }

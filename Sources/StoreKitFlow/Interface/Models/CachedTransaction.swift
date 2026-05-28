@@ -26,7 +26,7 @@ public struct CachedTransaction: Codable, Identifiable, Sendable {
     /// How this transaction first entered the cache.
     public let source: CacheSource
     /// Ordered trail of every time StoreKit surfaced this transaction to the app.
-    public var deliveryLog: [TransactionDeliveryEvent]
+    public let deliveryLog: [TransactionDeliveryEvent]
 
     /// How many times StoreKit has delivered this transaction.
     public var deliveryCount: Int { deliveryLog.count }

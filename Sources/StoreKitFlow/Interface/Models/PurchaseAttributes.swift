@@ -13,7 +13,7 @@ import StoreKit
 /// await store.purchase(product, attributes: .init(quantity: 5))
 ///
 /// // Tag the purchase with server-readable metadata
-/// await store.purchase(product, attributes: .init(customValues: ["campaign": "summer24"]))
+/// await store.purchase(product, attributes: .init(customStringValues: ["campaign": "summer24"]))
 /// ```
 public struct PurchaseAttributes {
     /// A UUID that links this purchase to an account in your system.
@@ -35,23 +35,49 @@ public struct PurchaseAttributes {
     /// Has no effect in production.
     public var simulatesAskToBuy: Bool?
 
-    /// Arbitrary string key-value pairs forwarded to your server via the transaction's
-    /// `appTransactionID` or verified receipt. Useful for attribution, A/B test variants,
-    /// or campaign tracking. Keys and values must both be `String`.
-    public var customValues: [String: String] = [:]
+    /// Arbitrary string key-value pairs forwarded via `Product.PurchaseOption.custom(key:value:)`.
+    public var customStringValues: [String: String] = [:]
+
+    /// Arbitrary double key-value pairs forwarded via `Product.PurchaseOption.custom(key:value:)`.
+    public var customDoubleValues: [String: Double] = [:]
+
+    /// Arbitrary bool key-value pairs forwarded via `Product.PurchaseOption.custom(key:value:)`.
+    public var customBoolValues: [String: Bool] = [:]
+
+    /// The ID of a win-back offer to apply. Resolved to a `Product.SubscriptionOffer` in `PurchaseService`.
+    /// Only available on iOS 18+ / macOS 15+.
+    public var winBackOfferID: String?
+
+    /// When `true`, inserts a no-op `.onStorefrontChange` handler. The real handler should be
+    /// registered at the app level — this is for testing the option is plumbed correctly.
+    public var onStorefrontChange: Bool = false
+
+    /// A compact JWS string for introductory offer eligibility verification.
+    /// Obtained from your server after verifying the user qualifies.
+    public var introductoryOfferJWS: String?
 
     public init(
         appAccountToken: UUID? = nil,
         quantity: Int? = nil,
         promotionalOfferID: String? = nil,
         simulatesAskToBuy: Bool? = nil,
-        customValues: [String: String] = [:]
+        customStringValues: [String: String] = [:],
+        customDoubleValues: [String: Double] = [:],
+        customBoolValues: [String: Bool] = [:],
+        winBackOfferID: String? = nil,
+        onStorefrontChange: Bool = false,
+        introductoryOfferJWS: String? = nil
     ) {
         self.appAccountToken = appAccountToken
         self.quantity = quantity
         self.promotionalOfferID = promotionalOfferID
         self.simulatesAskToBuy = simulatesAskToBuy
-        self.customValues = customValues
+        self.customStringValues = customStringValues
+        self.customDoubleValues = customDoubleValues
+        self.customBoolValues = customBoolValues
+        self.winBackOfferID = winBackOfferID
+        self.onStorefrontChange = onStorefrontChange
+        self.introductoryOfferJWS = introductoryOfferJWS
     }
 
     func toPurchaseOptions() -> Set<Product.PurchaseOption> {
@@ -65,9 +91,20 @@ public struct PurchaseAttributes {
         if let simulate = simulatesAskToBuy {
             options.insert(.simulatesAskToBuyInSandbox(simulate))
         }
-        for (key, value) in customValues {
+        for (key, value) in customStringValues {
             options.insert(.custom(key: key, value: value))
         }
+        for (key, value) in customDoubleValues {
+            options.insert(.custom(key: key, value: value))
+        }
+        for (key, value) in customBoolValues {
+            options.insert(.custom(key: key, value: value))
+        }
+        if onStorefrontChange {
+            options.insert(.onStorefrontChange { _ in return true })
+        }
+        // winBackOfferID and introductoryOfferJWS are resolved in PurchaseService
+        // because they require the Product object
         return options
     }
 }

@@ -2,7 +2,13 @@ import Combine
 
 public protocol EntitlementCheckable: Sendable {
     func currentEntitlements() async -> Set<String>
-    func isEligibleForIntroOffer(productID: String) async -> Bool
-    func currentEntitlementsPublisher() -> AnyPublisher<Set<String>, Never>
-    func isEligibleForIntroOfferPublisher(productID: String) -> AnyPublisher<Bool, Never>
+}
+
+public extension EntitlementCheckable {
+    func currentEntitlementsPublisher() -> AnyPublisher<Set<String>, Never> {
+        Future { promise in
+            Task { promise(.success(await self.currentEntitlements())) }
+        }
+        .eraseToAnyPublisher()
+    }
 }

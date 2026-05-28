@@ -17,7 +17,7 @@ import StoreKit
 /// ## Thread safety
 /// All methods are `@MainActor` — safe to call from `StoreKitFlowStore` which is also `@MainActor`.
 @MainActor
-final class TransactionCache {
+final class TransactionCache: TransactionCaching {
 
     static let shared = TransactionCache()
 
@@ -45,27 +45,21 @@ final class TransactionCache {
     /// If it is new, the full entry is appended.
     func record(_ entry: CachedTransaction) {
         if let index = entries.firstIndex(where: { $0.id == entry.id }) {
-            var existing = entries[index]
-            existing.deliveryLog.append(contentsOf: entry.deliveryLog)
-            // Refresh finishedAt if this call has it and the existing record doesn't
-            if existing.finishedAt == nil, let finished = entry.finishedAt {
-                entries[index] = CachedTransaction(
-                    id: existing.id,
-                    originalID: existing.originalID,
-                    productID: existing.productID,
-                    productType: existing.productType,
-                    purchaseDate: existing.purchaseDate,
-                    expirationDate: existing.expirationDate,
-                    revocationDate: existing.revocationDate,
-                    appAccountToken: existing.appAccountToken,
-                    environment: existing.environment,
-                    finishedAt: finished,
-                    source: existing.source,
-                    deliveryLog: existing.deliveryLog
-                )
-            } else {
-                entries[index] = existing
-            }
+            let existing = entries[index]
+            entries[index] = CachedTransaction(
+                id: existing.id,
+                originalID: existing.originalID,
+                productID: existing.productID,
+                productType: existing.productType,
+                purchaseDate: existing.purchaseDate,
+                expirationDate: existing.expirationDate,
+                revocationDate: existing.revocationDate,
+                appAccountToken: existing.appAccountToken,
+                environment: existing.environment,
+                finishedAt: existing.finishedAt ?? entry.finishedAt,
+                source: existing.source,
+                deliveryLog: existing.deliveryLog + entry.deliveryLog
+            )
         } else {
             entries.append(entry)
         }
@@ -115,7 +109,7 @@ final class TransactionCache {
             let data = try JSONEncoder().encode(entries)
             try data.write(to: storageURL, options: .atomic)
         } catch {
-            // Persistence failure is non-fatal — cache is still correct in-memory for this session
+            print("[StoreKitFlow] Cache persistence failed: \(error)")
         }
     }
 

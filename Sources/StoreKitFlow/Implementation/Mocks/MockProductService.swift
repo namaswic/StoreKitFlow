@@ -1,5 +1,3 @@
-import Combine
-
 public final class MockProductService: ProductFetchable {
     public let stubbedProducts: [StoreProduct]
 
@@ -8,12 +6,6 @@ public final class MockProductService: ProductFetchable {
     }
 
     public func fetchProducts(ids: [String]) async throws -> [StoreProduct] {
-        stubbedProducts
-    }
-
-    public func fetchProductsPublisher(ids: [String]) -> AnyPublisher<[StoreProduct], Error> {
-        Just(stubbedProducts)
-            .setFailureType(to: Error.self)
-            .eraseToAnyPublisher()
+        stubbedProducts.filter { ids.contains($0.id) }
     }
 }

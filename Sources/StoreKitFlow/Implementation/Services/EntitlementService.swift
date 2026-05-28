@@ -1,7 +1,6 @@
-import Combine
 import StoreKit
 
-public final class EntitlementService: EntitlementCheckable {
+public final class EntitlementService: EntitlementCheckable, IntroOfferCheckable {
     public init() {}
 
     public func currentEntitlements() async -> Set<String> {
@@ -20,25 +19,5 @@ public final class EntitlementService: EntitlementCheckable {
             return false
         }
         return await subscription.isEligibleForIntroOffer
-    }
-
-    public func currentEntitlementsPublisher() -> AnyPublisher<Set<String>, Never> {
-        Future { promise in
-            Task {
-                let entitlements = await self.currentEntitlements()
-                promise(.success(entitlements))
-            }
-        }
-        .eraseToAnyPublisher()
-    }
-
-    public func isEligibleForIntroOfferPublisher(productID: String) -> AnyPublisher<Bool, Never> {
-        Future { promise in
-            Task {
-                let eligible = await self.isEligibleForIntroOffer(productID: productID)
-                promise(.success(eligible))
-            }
-        }
-        .eraseToAnyPublisher()
     }
 }

@@ -2,7 +2,10 @@ import Foundation
 import StoreKit
 
 @MainActor
-public final class StoreKitFlowStore: ObservableObject {
+public final class StoreKitFlowStore: ObservableObject, StoreObservable {
+
+    // MARK: - Published state
+
     @Published public private(set) var products: [StoreProduct] = []
     @Published public private(set) var purchasedProductIDs: Set<String> = []
     @Published public private(set) var isLoading = false
@@ -11,6 +14,8 @@ public final class StoreKitFlowStore: ObservableObject {
     /// Persistent history of every verified transaction seen by this store, ordered oldest first.
     /// Populated from `TransactionCache` on `initialize()` and updated after every `finish()`.
     @Published public private(set) var transactionHistory: [CachedTransaction] = []
+
+    // MARK: - Callbacks
 
     /// Called once per verified external transaction (renewal, revocation, family sharing).
     ///
@@ -23,40 +28,51 @@ public final class StoreKitFlowStore: ObservableObject {
     ///   actual access. See https://developer.apple.com/forums/thread/877090022
     public var onTransactionUpdate: (@Sendable (TransactionUpdate) async -> Void)?
 
-    /// Tracks transaction IDs already processed in `listenForTransactionsUpdates` to prevent
-    /// duplicate handling caused by StoreKit re-delivering the same transaction before finish() completes.
-    private var seenTransactionIDs: Set<UInt64> = []
-
-    /// Holds the transaction update listener task alive for the lifetime of the store.
-    /// Must be stored — a discarded Task handle is eligible for cancellation, which would
-    /// silently stop renewals from arriving after the first purchase.
-    private var transactionListenerTask: Task<Void, Never>?
-
-    private let cache = TransactionCache.shared
-
+    // MARK: - Dependencies
 
     private let productService: any ProductFetchable
     private let purchaseService: any Purchasable
     private let entitlementService: any EntitlementCheckable
     private let transactionService: any TransactionObservable
+    private let cache: any TransactionCaching
+    private let logger: any StoreKitFlowLogging
+
+    // MARK: - SRP sub-components
+
+    private let listener = TransactionListener()
+    private lazy var orchestrator = TransactionOrchestrator(
+        cache: cache,
+        logger: logger,
+        cacheEnabled: configuration.enableTransactionCache
+    )
+
+    // MARK: - Configuration
 
     public var productIDs: [String] = []
     public private(set) var configuration: StoreKitFlowConfiguration
+
+    // MARK: - Init
 
     public init(
         productService: any ProductFetchable,
         purchaseService: any Purchasable = PurchaseService(),
         entitlementService: any EntitlementCheckable,
         transactionService: any TransactionObservable,
+        cache: (any TransactionCaching)? = nil,
+        logger: (any StoreKitFlowLogging)? = nil,
         configuration: StoreKitFlowConfiguration = .init(productIDs: [])
     ) {
         self.productService = productService
         self.purchaseService = purchaseService
         self.entitlementService = entitlementService
         self.transactionService = transactionService
+        self.cache = cache ?? TransactionCache.shared
+        self.logger = logger ?? StoreKitFlowLogger.shared
         self.configuration = configuration
         self.productIDs = configuration.productIDs
     }
+
+    // MARK: - Initialize
 
     public func initialize() async {
         isLoading = true
@@ -78,12 +94,19 @@ public final class StoreKitFlowStore: ObservableObject {
         log(.entitlementsLoaded(productIDs: currentEntitlements))
 
         if configuration.enableTransactionCache {
-            await processUnfinishedTransactions()
-            await runReconciliation()
+            let unfinishedIDs = await orchestrator.processUnfinished()
+            unfinishedIDs.forEach { purchasedProductIDs.insert($0) }
+
+            let reconciledIDs = await orchestrator.reconcile()
+            reconciledIDs.forEach { purchasedProductIDs.insert($0) }
+
             transactionHistory = cache.all()
         }
-        listenForTransactionsUpdates()
+
+        startListening()
     }
+
+    // MARK: - Purchase
 
     /// Initiates a purchase for the given product and returns a typed outcome.
     ///
@@ -129,27 +152,26 @@ public final class StoreKitFlowStore: ObservableObject {
         log(.purchaseStarted(productID: product.id))
 
         if shouldProcessUnfinishedTransactions {
-            await processUnfinishedTransactions()
+            let ids = await orchestrator.processUnfinished()
+            ids.forEach { purchasedProductIDs.insert($0) }
         }
-        
+
         do {
             let result = try await purchaseService.purchase(product: product, attributes: attributes)
             switch result {
             case .success(let verification):
-                // StoreKit returns a verified or unverified transaction — always check before granting access
                 guard case .verified(let transaction) = verification else {
                     log(.transactionUnverified(productID: product.id))
                     return .unverified
                 }
-                log(
-                    .transactionVerified(
-                        productID: transaction.productID,
-                        transactionID: transaction.id,
-                        originalTransactionID: transaction.originalID
-                    )
-                )
+                log(.transactionVerified(
+                    productID: transaction.productID,
+                    transactionID: transaction.id,
+                    originalTransactionID: transaction.originalID
+                ))
                 purchasedProductIDs.insert(transaction.productID)
-                await finishAndCache(transaction, source: .purchase, path: .storePurchase)
+                await orchestrator.finishAndCache(transaction, source: .purchase, path: .storePurchase)
+                if configuration.enableTransactionCache { transactionHistory = cache.all() }
                 log(.purchaseSucceeded(productID: product.id))
                 return .success(
                     productID: transaction.productID,
@@ -173,13 +195,15 @@ public final class StoreKitFlowStore: ObservableObject {
             }
         } catch {
             log(.purchaseFailed(productID: product.id, error: error.localizedDescription))
-            return .failed(error)
+            return .failed(.purchaseFailed(error))
         }
     }
 
     public func isPurchased(_ product: StoreProduct) -> Bool {
         purchasedProductIDs.contains(product.id)
     }
+
+    // MARK: - Restore
 
     /// Restores purchases for the current user and syncs entitlements.
     ///
@@ -208,6 +232,8 @@ public final class StoreKitFlowStore: ObservableObject {
         }
     }
 
+    // MARK: - Cache & Logs
+
     public func clearLogs() {
         logs.removeAll()
     }
@@ -218,169 +244,68 @@ public final class StoreKitFlowStore: ObservableObject {
         transactionHistory = []
     }
 
-    /// Drains StoreKit's unfinished transaction queue by verifying and finishing each pending transaction.
-    ///
-    /// Unfinished transactions accumulate when a previous app session granted entitlement but crashed
-    /// or was killed before calling `transaction.finish()`. StoreKit re-delivers these on every launch
-    /// until they are explicitly finished.
-    ///
-    /// Leaving them in the queue can cause silent `.success` responses when re-purchasing an expired
-    /// subscription — StoreKit resolves the unfinished transaction instead of initiating a new purchase,
-    /// and the user never sees a confirmation sheet. The root cause (confirmed in both sandbox and
-    /// production) is unfinished renewal transactions blocking the new purchase flow — StoreKit
-    /// resolves the stale transaction instead of initiating a fresh one.
-    /// See https://stackoverflow.com/q/77355821 and https://developer.apple.com/forums/thread/723126
-    ///
-    /// - Verified transactions: entitlement is granted and the transaction is finished.
-    /// - Unverified transactions: logged and skipped — do not grant access for transactions that fail
-    ///   StoreKit's local cryptographic check.
-    private func processUnfinishedTransactions() async {
-        for await result in Transaction.unfinished {
-            switch result {
-                case .verified(let transaction):
-                    log(
-                        .unfinishedTransactionFound(
-                            productID: transaction.productID,
-                            transactionID: transaction.id,
-                            originalTransactionID: transaction.originalID
-                        )
-                    )
-                    purchasedProductIDs.insert(transaction.productID)
-                    await finishAndCache(transaction, source: .unfinished, path: .transactionUnfinished)
-                case .unverified(let transaction, _):
-                    log(
-                        .transactionUnverified(
-                            productID: transaction.productID
-                        )
-                    )
-            }
-        }
-    }
-
-    /// Listens for external transaction updates (renewals, revocations, family sharing, Ask to Buy approvals).
-    ///
-    /// **Subscription handling:** Per Apple DTS and the SKDemo sample, `Transaction.updates` for
-    /// auto-renewable subscriptions should **only** call `finish()`. Do not grant entitlement here —
-    /// subscription access must be checked via `Product.SubscriptionInfo.Status`. Inserting directly
-    /// into `purchasedProductIDs` from this loop causes duplicate state updates because StoreKit
-    /// can re-deliver the same transaction 2–3 times before `finish()` completes.
-    /// See https://developer.apple.com/forums/thread/877090022
-    ///
-    /// **Non-consumables / non-renewing subscriptions:** Entitlement is inserted into
-    /// `purchasedProductIDs` as usual since they have no renewal lifecycle.
-    ///
-    /// **Deduplication:** `seenTransactionIDs` guards against the same transaction being processed
-    /// more than once within the lifetime of this listener.
-    private func listenForTransactionsUpdates() {
-        transactionListenerTask = Task(priority: .background) {
-            for await result in transactionService.updates() {
-                switch result {
-                case .verified(let transaction):
-                    // Deduplicate — StoreKit can re-deliver the same ID before finish() completes
-                    guard !seenTransactionIDs.contains(transaction.id) else { continue }
-                    seenTransactionIDs.insert(transaction.id)
-
-                    log(
-                        .transactionReceived(
-                            productID: transaction.productID,
-                            transactionID: transaction.id,
-                            originalTransactionID: transaction.originalID
-                        )
-                    )
-                    log(
-                        .transactionVerified(
-                            productID: transaction.productID,
-                            transactionID: transaction.id,
-                            originalTransactionID: transaction.originalID
-                        )
-                    )
-
-                    // Only grant entitlement for non-subscription products.
-                    // For auto-renewable subscriptions, entitlement must be derived from
-                    // SubscriptionInfo.Status — not from the transaction update directly.
-                    if transaction.productType != .autoRenewable {
-                        purchasedProductIDs.insert(transaction.productID)
-                    }
-
-                    await finishAndCache(transaction, source: .renewal, path: .transactionUpdates)
-
-                    if let handler = onTransactionUpdate {
-                        let reason: TransactionUpdate.Reason
-                        if transaction.revocationDate != nil {
-                            reason = .revocation
-                        } else if transaction.ownershipType == .familyShared {
-                            reason = .familySharing
-                        } else {
-                            reason = .renewal
-                        }
-                        await handler(
-                            TransactionUpdate(
-                                productID: transaction.productID,
-                                transactionID: transaction.id,
-                                reason: reason
-                            )
-                        )
-                    }
-                case .unverified(let transaction, _):
-                    log(.transactionUnverified(productID: transaction.productID))
-                }
-            }
-        }
-    }
-
-    /// Finishes a verified transaction, records it in the cache, and logs both events.
-    private func finishAndCache(_ transaction: Transaction, source: CacheSource, path: TransactionDeliveryPath) async {
-        let finishedAt = Date()
-        await transaction.finish()
-        log(
-            .transactionFinished(
-                productID: transaction.productID,
-                transactionID: transaction.id,
-                originalTransactionID: transaction.originalID,
-                reason: finishReason(for: transaction)
-            )
-        )
-        let productType = ProductType(transaction.productType)
-        let entry = CachedTransaction(
-            transaction: transaction,
-            productType: productType,
-            finishedAt: finishedAt,
-            source: source,
-            path: path
-        )
-        if configuration.enableTransactionCache {
-            cache.record(entry)
-            transactionHistory = cache.all()
-            log(.transactionCached(productID: transaction.productID, transactionID: transaction.id, source: source))
-        }
-    }
-
     /// Cross-references `Transaction.currentEntitlements` against the cache to surface
     /// renewals that were delivered by StoreKit but never processed by this app.
-    /// Manually triggers a reconciliation pass. Call this after a purchase completes via
-    /// a StoreKit view (ProductView, SubscriptionStoreView) to ensure the transaction
-    /// is recorded in the cache even if it was finished before the updates listener saw it.
+    /// Call this after a purchase completes via a StoreKit view (ProductView, SubscriptionStoreView)
+    /// to ensure the transaction is recorded even if it was finished before the updates listener saw it.
     public func reconcile() async {
         guard configuration.enableTransactionCache else { return }
-        await runReconciliation()
+        let ids = await orchestrator.reconcile()
+        ids.forEach { purchasedProductIDs.insert($0) }
         transactionHistory = cache.all()
     }
 
-    private func runReconciliation() async {
-        let missing = await cache.reconcile()
-        if missing.isEmpty {
-            log(.reconciliationComplete)
-            return
-        }
-        log(.reconciliationFound(count: missing.count))
-        for transaction in missing {
-            purchasedProductIDs.insert(transaction.productID)
-            await finishAndCache(transaction, source: .renewal, path: .reconciliation)
-        }
+    // MARK: - Private
+
+    private func startListening() {
+        listener.start(
+            service: transactionService,
+            onVerified: { [weak self] transaction in
+                guard let self else { return }
+                self.log(.transactionReceived(
+                    productID: transaction.productID,
+                    transactionID: transaction.id,
+                    originalTransactionID: transaction.originalID
+                ))
+                self.log(.transactionVerified(
+                    productID: transaction.productID,
+                    transactionID: transaction.id,
+                    originalTransactionID: transaction.originalID
+                ))
+                // Only grant entitlement for non-subscription products.
+                // For auto-renewable subscriptions, entitlement must be derived from
+                // SubscriptionInfo.Status — not from the transaction update directly.
+                if transaction.productType != .autoRenewable {
+                    self.purchasedProductIDs.insert(transaction.productID)
+                }
+                await self.orchestrator.finishAndCache(transaction, source: .renewal, path: .transactionUpdates)
+                if self.configuration.enableTransactionCache {
+                    self.transactionHistory = self.cache.all()
+                }
+                if let handler = self.onTransactionUpdate {
+                    let reason: TransactionUpdate.Reason
+                    if transaction.revocationDate != nil {
+                        reason = .revocation
+                    } else if transaction.ownershipType == .familyShared {
+                        reason = .familySharing
+                    } else {
+                        reason = .renewal
+                    }
+                    await handler(TransactionUpdate(
+                        productID: transaction.productID,
+                        transactionID: transaction.id,
+                        reason: reason
+                    ))
+                }
+            },
+            onUnverified: { [weak self] productID in
+                self?.log(.transactionUnverified(productID: productID))
+            }
+        )
     }
 
     private func log(_ event: StoreLogEvent) {
         logs.insert(StoreLog(event: event), at: 0)
-        StoreKitFlowLogger.shared.log(event)
+        logger.log(event)
     }
 }
