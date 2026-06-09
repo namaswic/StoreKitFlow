@@ -12,16 +12,17 @@ Not sure which `SubscriptionStoreView` control style fits your design? Wondering
 
 - Browse every StoreKit view (`ProductView`, `StoreView`, `SubscriptionStoreView`, `SubscriptionOfferView`) with real purchases
 - Flip between all style variants with a segmented control — without dismissing the sheet
-- Toggle dark mode and Dynamic Type size to test accessibility on the spot
-- Tap any modifier line to copy it directly to your clipboard
+- Drill into any view to tweak every modifier live — then tap to copy the exact Swift code to your clipboard
+- Toggle dark mode and bump Dynamic Type size to test accessibility without leaving the screen
+- Open **Preview Appearance** to see the real StoreKit UI update instantly as you change modifiers
 - **Understand every product type** — the built-in Guide covers consumables, non-consumables, auto-renewable subscriptions, and non-renewing passes with real examples of how each is configured, purchased, and handled in code
 
 **For designers:** See exactly what each configuration looks like in real iOS UI. Switch between styles, test dark mode, and preview large text — all without asking an engineer to change the code and rebuild.
 
 <p align="center">
-  <img src="Screenshots/by_view_subscription.png" width="200">
-  <img src="Screenshots/by_view_product.png" width="200">
-  <img src="Screenshots/by_view_store.png" width="200">
+  <img src="Screenshots/explorer_subscription.gif" width="200">
+  <img src="Screenshots/testRecordExplorerSubscriptionDetail.gif" width="200">
+  <img src="Screenshots/guide.gif" width="200">
 </p>
 
 ---
@@ -47,9 +48,9 @@ private static let configuration = StoreKitFlowConfiguration(
 **For designers:** See your actual subscription names, prices, and offer copy inside real StoreKit UI — exactly as users will see it — before a single line of production code is written.
 
 <p align="center">
-  <img src="Screenshots/products.png" width="200">
-  <img src="Screenshots/logs.png" width="200">
-  <img src="Screenshots/sk_views.png" width="200">
+  <img src="Screenshots/products.gif" width="200">
+  <img src="Screenshots/logs.gif" width="200">
+  <img src="Screenshots/cache.gif" width="200">
 </p>
 
 ---
@@ -70,6 +71,12 @@ The Explorer gives you:
 - **Live transaction log** — every store event with category, timestamp, and full detail
 - **Transaction cache** — on-device history of every verified transaction, with a delivery trail showing how many times StoreKit surfaced each one and via which code path
 - **Purchase testing** — try any product with custom attributes (app account token, quantity, win-back offers, custom metadata) directly from the UI
+
+<p align="center">
+  <img src="Screenshots/logs.gif" width="200">
+  <img src="Screenshots/cache.gif" width="200">
+  <img src="Screenshots/testRecordExplorerSheets.gif" width="200">
+</p>
 
 ---
 

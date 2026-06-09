@@ -17,7 +17,6 @@ struct StoreKitFlowDemoApp: App {
         ],
         subscriptionGroupIDs: ["763D6759"],
         appStoreID: "1632168877",
-        storeKitConfigFileName: "Demo",
         enableTransactionCache: true
     )
 

@@ -234,7 +234,7 @@ struct SKSubscriptionStoreViewScreen: View {
             Picker("subscriptionStoreControlStyle", selection: $controlStyle) {
                 ForEach(SubscriptionControlStyleOption.allCases) { Text($0.label).tag($0) }
             }
-            .hint("Layout of the plan selector — buttons, picker, prominentPicker, or compactPicker")
+            .hint("Layout of the plan selector — prominentPicker, picker, compactPicker, or buttons")
             Picker("subscriptionStoreControlBackground", selection: $controlBackground) {
                 ForEach(ControlBackgroundOption.allCases) { Text($0.label).tag($0) }
             }

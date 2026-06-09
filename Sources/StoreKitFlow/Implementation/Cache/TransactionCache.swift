@@ -14,6 +14,15 @@ import StoreKit
 /// - A reconciliation engine to detect missed renewals
 /// - A source of truth for `store.transactionHistory`
 ///
+/// ## Apple re-delivers transactions repeatedly
+/// StoreKit persistently re-sends the same transaction via `Transaction.updates` until
+/// `finish()` is called — and even after, the same transaction ID can arrive 2–3 more
+/// times before Apple's servers acknowledge the finish. Without a cache there is no way
+/// to know whether a transaction update is genuinely new or a repeat delivery of something
+/// already processed. The cache's `deliveryLog` on each entry makes this visible: you can
+/// see exactly how many times StoreKit surfaced a transaction and via which code path,
+/// turning a confusing duplicate-delivery into an auditable, expected event.
+///
 /// ## Thread safety
 /// All methods are `@MainActor` — safe to call from `StoreKitFlowStore` which is also `@MainActor`.
 @MainActor
