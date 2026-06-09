@@ -21,7 +21,10 @@ let package = Package(
         .testTarget(
             name: "StoreKitFlowTests",
             dependencies: ["StoreKitFlow"],
-            path: "Tests/StoreKitFlowTests"
+            path: "Tests/StoreKitFlowTests",
+            resources: [
+                .process("Resources/StoreKitFlowTests.storekit")
+            ]
         )
     ]
 )
