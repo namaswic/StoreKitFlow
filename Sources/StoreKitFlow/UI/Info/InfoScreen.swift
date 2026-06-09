@@ -144,7 +144,7 @@ struct InfoScreen: View {
                         icon: "exclamationmark.shield.fill",
                         color: .red,
                         title: "Unverified",
-                        description: "A transaction that failed StoreKit's local cryptographic check. This can indicate tampering or a StoreKit bug. Never grant access, never call finish() — discard it."
+                        description: "A transaction that failed StoreKit's local cryptographic check. This can indicate tampering or a StoreKit bug. Never grant access, never call finish() — the transaction is not re-delivered and does not block future purchases."
                     )
                     InfoRow(
                         icon: "arrow.counterclockwise.circle.fill",
