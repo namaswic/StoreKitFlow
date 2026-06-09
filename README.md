@@ -8,7 +8,7 @@ StoreKit 2 is powerful — but it's full of subtle production pitfalls, undocume
 
 ### 1. Learn and explore the full StoreKit 2 API
 
-Not sure which `SubscriptionStoreView` control style fits your design? Wondering what `containerBackground`, `subscriptionStoreButtonLabel`, or `visibleRelationships` actually do? The built-in Explorer lets you interact with every StoreKit view and modifier live — no code required.
+Not sure which `SubscriptionStoreView` control style fits your design? Wondering what `containerBackground`, `subscriptionStoreButtonLabel`, or `visibleRelationships` actually do? **Clone the repo and run the demo app as-is** — no configuration needed. The built-in Explorer lets you interact with every StoreKit view and modifier live, and the Guide walks you through every concept you'll need to implement in-app purchases in your own app.
 
 - Browse every StoreKit view (`ProductView`, `StoreView`, `SubscriptionStoreView`, `SubscriptionOfferView`) with real purchases
 - Flip between all style variants with a segmented control — without dismissing the sheet
