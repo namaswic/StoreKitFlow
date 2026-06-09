@@ -57,7 +57,7 @@ private static let configuration = StoreKitFlowConfiguration(
 
 ### 3. Embed the Explorer in your own app for live debugging
 
-The Explorer isn't just for the demo app. Ship it inside your own app behind a debug flag, a shake gesture, or a settings toggle. When something goes wrong in production, you have the full picture without attaching Xcode.
+The Explorer isn't just for the demo app. Ship it inside your own app behind a debug flag, a shake gesture, or a settings toggle. You have the full picture without attaching Xcode.
 
 ```swift
 // Behind a debug flag
