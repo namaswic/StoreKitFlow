@@ -163,7 +163,7 @@ struct CacheTransactionDetailView: View {
             }
         }
         .navigationTitle("Transaction #\(entry.id)")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationTitle()
     }
 
     private func pathColor(_ path: TransactionDeliveryPath) -> Color {
@@ -230,6 +230,6 @@ struct DeliveryEventDetailView: View {
             }
         }
         .navigationTitle("Delivery Event")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationTitle()
     }
 }

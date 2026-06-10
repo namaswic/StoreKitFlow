@@ -46,7 +46,7 @@ struct PreviewSheet: View {
             .preferredColorScheme(colorScheme)
             .dynamicTypeSize(typeSize)
             .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineNavigationTitle()
             .toolbar { toolbarItems }
             .safeAreaInset(edge: .bottom) { if showDrawer { modifierDrawer } }
         }
@@ -143,7 +143,7 @@ struct PreviewSheet: View {
             }
             .pickerStyle(.wheel)
             .navigationTitle("Dynamic Type")
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { showTypePicker = false }

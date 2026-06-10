@@ -39,9 +39,9 @@ struct SKStoreViewScreen: View {
         }
         .sheet(isPresented: $showSheet) { storeSheet }
         .sheet(isPresented: $showCompositionSheet) { compositionSheet }
-        .listSectionSpacing(12)
+        .listSectionSpacingCompact()
         .navigationTitle("StoreView")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationTitle()
         .safeAreaInset(edge: .top) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {

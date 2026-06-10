@@ -136,9 +136,9 @@ struct SKProductViewScreen: View {
         }
         .sheet(isPresented: $showLargeSheet) { largeSheet }
         .sheet(isPresented: $showPurchaseOptionsSheet) { purchaseOptionsSheet }
-        .listSectionSpacing(12)
+        .listSectionSpacingCompact()
         .navigationTitle("ProductView")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationTitle()
         .safeAreaInset(edge: .top) { sectionFilterBar }
     }
 

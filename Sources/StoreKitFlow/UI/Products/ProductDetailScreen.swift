@@ -23,7 +23,7 @@ struct ProductDetailScreen: View {
             .padding()
         }
         .navigationTitle(product.displayName)
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationTitle()
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if store.isPurchased(product) {

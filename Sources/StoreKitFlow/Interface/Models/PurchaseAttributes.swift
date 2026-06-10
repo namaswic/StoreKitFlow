@@ -15,7 +15,7 @@ import StoreKit
 /// // Tag the purchase with server-readable metadata
 /// await store.purchase(product, attributes: .init(customStringValues: ["campaign": "summer24"]))
 /// ```
-public struct PurchaseAttributes {
+public struct PurchaseAttributes: Sendable {
     /// A UUID that links this purchase to an account in your system.
     /// Persists on the resulting `Transaction` so your server can verify ownership.
     /// Use this when users are signed into your backend.

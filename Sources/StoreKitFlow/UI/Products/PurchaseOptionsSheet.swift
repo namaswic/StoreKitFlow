@@ -36,7 +36,7 @@ struct PurchaseOptionsSheet: View {
                 storefrontSection
             }
             .navigationTitle(product.displayName)
-            .navigationBarTitleDisplayMode(.inline)
+            .inlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

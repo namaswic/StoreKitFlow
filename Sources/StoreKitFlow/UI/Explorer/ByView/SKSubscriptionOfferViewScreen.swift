@@ -28,9 +28,9 @@ struct SKSubscriptionOfferViewScreen: View {
             if selectedSection == nil || selectedSection == .detailAction        { detailActionSection }
             if selectedSection == nil || selectedSection == .preview             { previewSection }
         }
-        .listSectionSpacing(12)
+        .listSectionSpacingCompact()
         .navigationTitle("SubscriptionOfferView")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationTitle()
         .safeAreaInset(edge: .top) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {

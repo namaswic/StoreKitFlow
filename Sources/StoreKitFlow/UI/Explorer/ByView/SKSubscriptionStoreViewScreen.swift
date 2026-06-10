@@ -158,9 +158,9 @@ struct SKSubscriptionStoreViewScreen: View {
                 if selectedSection == nil || selectedSection == .structure        { structureSection }
             }
         }
-        .listSectionSpacing(12)
+        .listSectionSpacingCompact()
         .navigationTitle("SubscriptionStoreView")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationTitle()
         .safeAreaInset(edge: .top) { sectionFilterBar }
         .sheet(isPresented: $showAppearanceSheet) { appearanceSheet }
         .sheet(isPresented: $showContainerSheet) { containerSheet }

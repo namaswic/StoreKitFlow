@@ -48,6 +48,7 @@ public final class StoreKitFlowStore: ObservableObject, StoreObservable {
 
     // MARK: - Configuration
 
+    /// Product IDs this store was configured with.
     public var productIDs: [String] = []
     public private(set) var configuration: StoreKitFlowConfiguration
 
@@ -74,6 +75,8 @@ public final class StoreKitFlowStore: ObservableObject, StoreObservable {
 
     // MARK: - Initialize
 
+    /// Fetches products, loads entitlements, drains unfinished transactions, and starts the transaction listener.
+    /// Call once from `.task` on your root view.
     public func initialize() async {
         isLoading = true
         defer { isLoading = false }
@@ -199,6 +202,7 @@ public final class StoreKitFlowStore: ObservableObject, StoreObservable {
         }
     }
 
+    /// Returns `true` if the product ID is in the current set of purchased product IDs.
     public func isPurchased(_ product: StoreProduct) -> Bool {
         purchasedProductIDs.contains(product.id)
     }
@@ -234,10 +238,12 @@ public final class StoreKitFlowStore: ObservableObject, StoreObservable {
 
     // MARK: - Cache & Logs
 
+    /// Removes all entries from the in-memory log. Does not affect the transaction cache.
     public func clearLogs() {
         logs.removeAll()
     }
 
+    /// Clears the in-memory transaction history and the on-disk cache. No-op if `enableTransactionCache` is `false`.
     public func clearTransactionHistory() {
         guard configuration.enableTransactionCache else { return }
         cache.clearAll()
