@@ -176,6 +176,27 @@ public final class StoreKitFlowStore: ObservableObject, StoreObservable {
                 await orchestrator.finishAndCache(transaction, source: .purchase, path: .storePurchase)
                 if configuration.enableTransactionCache { transactionHistory = cache.all() }
                 log(.purchaseSucceeded(productID: product.id))
+
+                // ⚠️ Multi-Account Subscription Edge Case
+                // Scenario 1: Same Apple Account, Different App Accounts
+                //   - App Account A has active auto-renewing subscription
+                //   - User logs into App Account B (same Apple Account)
+                //   - Tries to purchase: Apple returns .success with Account A's subscription
+                // Scenario 2: Same App Account Purchased Twice
+                //   - Account purchases subscription, then tries again
+                //   - Apple returns .success with existing subscription, not a new transaction
+                //
+                // Verify transaction.appAccountToken == attributes.appAccountToken
+                if let requestedToken = attributes.appAccountToken,
+                   transaction.appAccountToken != requestedToken {
+                    log(.accountTokenMismatch(
+                        productID: product.id,
+                        requested: requestedToken,
+                        received: transaction.appAccountToken
+                    ))
+                    return .accountTokenMismatch(requested: requestedToken, received: transaction.appAccountToken)
+                }
+
                 return .success(
                     productID: transaction.productID,
                     transactionID: transaction.id,

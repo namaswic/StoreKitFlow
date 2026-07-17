@@ -1,0 +1,31 @@
+{
+  "configurations" : [
+    {
+      "id" : "F198BCB2-0BC0-4F51-BB4C-76858179E81E",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:DemoApp\/StoreKitFlowDemo\/StoreKitFlowDemo.xcodeproj",
+        "identifier" : "DA8D594A2FB13C5800580C45",
+        "name" : "StoreKitFlowDemoTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:DemoApp\/StoreKitFlowDemo\/StoreKitFlowDemo.xcodeproj",
+        "identifier" : "DA8D59542FB13C5800580C45",
+        "name" : "StoreKitFlowDemoUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

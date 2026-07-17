@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		DA6883C52FB13E9E00E330C5 /* StoreKitFlow in Frameworks */ = {isa = PBXBuildFile; productRef = DA6883C42FB13E9E00E330C5 /* StoreKitFlow */; };
+		DAB28E342FD84862000BFAE2 /* TestPlan.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = DAB28E332FD84862000BFAE2 /* TestPlan.xctestplan */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +32,7 @@
 		DA8D593C2FB13C5700580C45 /* StoreKitFlowDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StoreKitFlowDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA8D594B2FB13C5800580C45 /* StoreKitFlowDemoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StoreKitFlowDemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA8D59552FB13C5800580C45 /* StoreKitFlowDemoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StoreKitFlowDemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DAB28E332FD84862000BFAE2 /* TestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlan.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -108,6 +110,7 @@
 		DA8D59332FB13C5600580C45 = {
 			isa = PBXGroup;
 			children = (
+				DAB28E332FD84862000BFAE2 /* TestPlan.xctestplan */,
 				DA8D593E2FB13C5700580C45 /* StoreKitFlowDemo */,
 				DA8D594E2FB13C5800580C45 /* StoreKitFlowDemoTests */,
 				DA8D59582FB13C5800580C45 /* StoreKitFlowDemoUITests */,
@@ -250,6 +253,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DAB28E342FD84862000BFAE2 /* TestPlan.xctestplan in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

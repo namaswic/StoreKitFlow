@@ -33,6 +33,7 @@ public enum StoreLogEvent: Sendable {
     case purchaseCancelled(productID: String)
     case purchasePending(productID: String)
     case purchaseFailed(productID: String, error: String)
+    case accountTokenMismatch(productID: String, requested: UUID?, received: UUID?)
 
     // Transaction Listener
     case transactionReceived(productID: String, transactionID: UInt64, originalTransactionID: UInt64)
@@ -58,7 +59,7 @@ public enum StoreLogEvent: Sendable {
         switch self {
         case .fetchStarted, .fetchCompleted, .fetchFailed:
             return .productService
-        case .purchaseStarted, .purchaseSucceeded, .purchaseCancelled, .purchasePending, .purchaseFailed:
+        case .purchaseStarted, .purchaseSucceeded, .purchaseCancelled, .purchasePending, .purchaseFailed, .accountTokenMismatch:
             return .purchaseFlow
         case .transactionReceived, .transactionVerified, .transactionUnverified, .transactionFinished, .unfinishedTransactionFound:
             return .transactions
@@ -91,6 +92,8 @@ public enum StoreLogEvent: Sendable {
             return "\(prefix) Pending — \(productID)"
         case .purchaseFailed(let productID, let error):
             return "\(prefix) Failed — \(productID): \(error)"
+        case .accountTokenMismatch(let productID, let requested, let received):
+            return "\(prefix) Account token mismatch — \(productID): requested \(requested?.uuidString ?? "nil"), received \(received?.uuidString ?? "nil")"
         case .transactionReceived(let productID, let id, _):
             return "\(prefix) Received #\(id) — \(productID)"
         case .transactionVerified(let productID, let id, _):
@@ -127,7 +130,8 @@ public enum StoreLogEvent: Sendable {
         case .purchaseSucceeded:            return "cart.fill.badge.plus"
         case .purchaseCancelled:            return "xmark.circle"
         case .purchasePending:              return "clock"
-        case .purchaseFailed:              return "cart.badge.minus"
+        case .purchaseFailed:               return "cart.badge.minus"
+        case .accountTokenMismatch:         return "person.crop.circle.badge.exclamationmark"
         case .transactionReceived:          return "arrow.left.circle"
         case .transactionVerified:          return "checkmark.seal.fill"
         case .transactionUnverified:        return "exclamationmark.shield.fill"
@@ -185,6 +189,13 @@ public enum StoreLogEvent: Sendable {
             return [
                 Detail(label: "Product ID", value: productID),
                 Detail(label: "Error", value: error)
+            ]
+        case .accountTokenMismatch(let productID, let requested, let received):
+            return [
+                Detail(label: "Product ID", value: productID),
+                Detail(label: "Requested Token", value: requested?.uuidString ?? "nil"),
+                Detail(label: "Received Token", value: received?.uuidString ?? "nil"),
+                Detail(label: "Cause", value: "Different app account (same Apple ID) has active subscription")
             ]
         case .transactionFinished(let productID, let id, let originalID, let reason):
             return [

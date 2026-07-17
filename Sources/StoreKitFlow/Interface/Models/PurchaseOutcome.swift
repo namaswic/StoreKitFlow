@@ -10,6 +10,7 @@ public enum PurchaseOutcome: Sendable {
     case pending
     case cancelled
     case unverified
+    case accountTokenMismatch(requested: UUID?, received: UUID?)
     case failed(StoreKitFlowError)
 }
 
