@@ -80,9 +80,12 @@ struct PreviewSheet: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
-                colorScheme = colorScheme == .dark ? nil : .dark
+                withAnimation(.spring(duration: 0.3)) {
+                    colorScheme = colorScheme == .dark ? .light : .dark
+                }
             } label: {
                 Image(systemName: colorScheme == .dark ? "sun.max" : "moon")
+                    .transition(.scale.combined(with: .opacity))
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
